@@ -1,0 +1,2253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Voyage Concierge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1220;
+    --surface: #121c30;
+    --surface-2: #182742;
+    --line: #24344f;
+    --brass: #c9a86a;
+    --brass-bright: #e6c98a;
+    --text: #e8ecf4;
+    --dim: #93a0b8;
+    --faint: #5d6b85;
+    --green: #4fc08d;
+    --amber: #e0a437;
+    --red: #e06565;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+  h1,h2,h3,h4,.serif { font-family: 'Marcellus', serif; font-weight: 400; }
+  button { font-family: 'Inter', sans-serif; }
+
+  /* ===== Header ===== */
+  header {
+    padding: calc(16px + env(safe-area-inset-top)) 20px 12px;
+    background: linear-gradient(180deg, #0e1830, var(--bg));
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 40;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand-mark {
+    width: 36px; height: 36px; border: 1px solid var(--brass); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brass); font-family: 'Marcellus', serif; font-size: 17px; flex-shrink: 0;
+  }
+  .brand h1 { font-size: 18px; letter-spacing: 2px; text-transform: uppercase; }
+  .brand p { font-size: 10px; color: var(--brass); letter-spacing: 2.5px; text-transform: uppercase; margin-top: 1px; }
+  .hdr-action {
+    margin-left: auto; background: transparent; border: 1px solid var(--line); color: var(--dim);
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 9px 13px; border-radius: 9px; min-height: 44px; cursor: pointer; flex-shrink: 0;
+  }
+
+  .progress-wrap { margin-top: 13px; }
+  .progress-bar { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; border-radius: 2px; background: linear-gradient(90deg, var(--brass), var(--brass-bright)); transition: width .3s ease; }
+  .progress-meta { display: flex; justify-content: space-between; margin-top: 7px; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+  .progress-meta .stage { color: var(--brass); }
+
+  main { padding: 20px 16px 0; max-width: 640px; margin: 0 auto; }
+
+  /* ===== Shared bits ===== */
+  .q-eyebrow { font-size: 10.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--brass); margin-bottom: 9px; }
+  .q-title { font-size: 25px; line-height: 1.25; }
+  .q-help { font-size: 13.5px; color: var(--dim); margin-top: 9px; line-height: 1.55; }
+  .q-body { margin-top: 22px; }
+  .part-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--brass); margin: 26px 2px 9px; display: flex; align-items: center; gap: 9px; }
+  .part-label.first { margin-top: 4px; }
+  .part-label::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .part-help { font-size: 12.5px; color: var(--dim); line-height: 1.5; margin: -3px 2px 11px; }
+  .sec-head { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--dim); margin: 26px 4px 10px; display: flex; align-items: center; gap: 9px; }
+  .sec-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+  .opts { display: flex; flex-direction: column; gap: 10px; }
+  .opt {
+    display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+    min-height: 56px; padding: 13px 16px; border-radius: 12px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line); color: var(--text); font-size: 15px;
+  }
+  .opt .o-ico { font-size: 19px; width: 24px; text-align: center; flex-shrink: 0; }
+  .opt .o-main { flex: 1; min-width: 0; }
+  .opt .o-label { font-weight: 600; display: block; }
+  .opt .o-sub { font-size: 12.5px; color: var(--dim); margin-top: 2px; line-height: 1.4; display: block; }
+  .opt .o-mark { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--bg); }
+  .opt.sel { border-color: var(--brass); background: rgba(201,168,106,.09); }
+  .opt.sel .o-mark { background: var(--brass); border-color: var(--brass); }
+  .opt.sel .o-mark::after { content: '✓'; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  label.field { display: block; margin-bottom: 14px; }
+  label.field .lbl { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; display: block; }
+  input[type=text], input[type=date], input[type=number], input[type=password], textarea, select {
+    width: 100%; min-height: 50px; padding: 13px 14px; border-radius: 11px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--text);
+    font-family: 'Inter', sans-serif; font-size: 16px;
+  }
+  textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--brass); }
+  input::placeholder, textarea::placeholder { color: var(--faint); }
+  .tier-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding-left: 37px; }
+  .tier-row select { min-height: 44px; font-size: 14px; padding: 8px 12px; }
+
+  .note { margin-top: 16px; padding: 12px 14px; border-radius: 11px; font-size: 13px; line-height: 1.55; background: rgba(224,164,55,.07); border: 1px solid rgba(224,164,55,.28); color: var(--dim); }
+  .note b { color: var(--brass-bright); font-weight: 600; }
+
+  /* ===== Footer nav / actions ===== */
+  .footer {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+    background: rgba(11,18,32,.97); border-top: 1px solid var(--line);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    backdrop-filter: blur(8px);
+  }
+  .footer .inner { display: flex; gap: 10px; max-width: 640px; margin: 0 auto; width: 100%; }
+  .btn { min-height: 52px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); }
+  .btn-back { background: transparent; color: var(--dim); padding: 0 20px; }
+  .btn-next { flex: 1; background: linear-gradient(135deg, var(--brass), var(--brass-bright)); color: #1a1408; border: none; }
+  nav.tabs { display: flex; justify-content: space-around; max-width: 640px; margin: 0 auto; }
+  .nav-btn {
+    background: none; border: none; color: var(--dim); font-size: 11px; font-weight: 600; letter-spacing: .6px;
+    min-width: 76px; min-height: 52px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .nav-btn .ico { font-size: 20px; }
+  .nav-btn.active { color: var(--brass-bright); }
+
+  /* ===== Dashboard ===== */
+  .empty { text-align: center; padding: 44px 20px; }
+  .empty .e-mark { font-size: 46px; margin-bottom: 16px; }
+  .empty h2 { font-size: 23px; margin-bottom: 10px; }
+  .empty p { font-size: 14px; color: var(--dim); line-height: 1.6; max-width: 380px; margin: 0 auto 22px; }
+  .btn-cta {
+    min-height: 54px; padding: 0 26px; border-radius: 13px; font-size: 15.5px; font-weight: 600;
+    background: linear-gradient(135deg, var(--brass), var(--brass-bright)); color: #1a1408; border: none; cursor: pointer;
+  }
+  .trip-tile {
+    width: 100%; text-align: left; display: block; cursor: pointer;
+    background: linear-gradient(135deg, var(--surface-2), var(--surface) 70%);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 11px; position: relative; overflow: hidden; color: var(--text);
+  }
+  .trip-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+  .tt-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .tt-name { font-family: 'Marcellus', serif; font-size: 19px; line-height: 1.2; }
+  .tt-sub { font-size: 12.5px; color: var(--dim); margin-top: 5px; }
+  .tt-count { text-align: center; flex-shrink: 0; }
+  .tt-count .num { font-family: 'Marcellus', serif; font-size: 25px; color: var(--brass-bright); line-height: 1; }
+  .tt-count .lbl { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--dim); margin-top: 3px; }
+  .tt-next { margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(224,164,55,.08); border: 1px solid rgba(224,164,55,.28); font-size: 12.5px; color: var(--dim); line-height: 1.45; }
+  .tt-next b { color: var(--brass-bright); font-weight: 600; }
+  .tt-draft { display: inline-block; margin-top: 10px; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; padding: 4px 9px; border-radius: 5px; color: var(--amber); border: 1px solid rgba(224,164,55,.4); }
+
+  /* ===== Plan ===== */
+  .plan-hero { background: linear-gradient(135deg, var(--surface-2), var(--surface) 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; position: relative; overflow: hidden; margin-bottom: 6px; }
+  .plan-hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+  .plan-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .plan-name { font-size: 22px; line-height: 1.2; }
+  .plan-sub { font-size: 13px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+  .plan-count { text-align: center; flex-shrink: 0; }
+  .plan-count .num { font-family: 'Marcellus', serif; font-size: 30px; color: var(--brass-bright); line-height: 1; }
+  .plan-count .lbl { font-size: 9.5px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
+  .plan-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+  .pchip { font-size: 12px; padding: 5px 11px; border-radius: 999px; background: rgba(201,168,106,.1); border: 1px solid rgba(201,168,106,.35); color: var(--brass-bright); }
+  .pchip.warn { background: rgba(224,164,55,.12); border-color: rgba(224,164,55,.45); color: var(--amber); }
+  .pchip.ok { background: rgba(79,192,141,.1); border-color: rgba(79,192,141,.4); color: var(--green); }
+
+  .phase-head { display: flex; align-items: center; gap: 10px; margin: 14px 2px 8px; }
+  .phase-ico { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: rgba(201,168,106,.12); flex-shrink: 0; }
+  .phase-head h4 { font-size: 15px; }
+  .phase-head .ph-when { font-size: 11.5px; color: var(--dim); margin-left: auto; }
+  .day { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 7px; }
+  .day .d-date { font-size: 10.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brass); margin-bottom: 4px; }
+  .day .d-text { font-size: 13.5px; line-height: 1.55; }
+  .day .d-note { font-size: 12.5px; color: var(--dim); margin-top: 6px; line-height: 1.5; }
+  .day .d-note b { color: var(--brass-bright); font-weight: 600; }
+
+  .ms { display: flex; gap: 12px; align-items: flex-start; padding: 13px 2px; border-bottom: 1px solid var(--line); }
+  .ms:last-child { border-bottom: none; }
+  .ms-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; border: 2px solid var(--line); background: var(--surface); }
+  .ms.critical .ms-dot { background: var(--red); border-color: var(--red); box-shadow: 0 0 11px rgba(224,101,101,.55); }
+  .ms.urgent .ms-dot { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px rgba(224,164,55,.5); }
+  .ms.done .ms-dot { background: var(--green); border-color: var(--green); }
+  .ms-body { flex: 1; min-width: 0; }
+  .ms-title { font-size: 14.5px; font-weight: 600; }
+  .ms.done .ms-title { color: var(--dim); text-decoration: line-through; }
+  .ms-when { font-size: 11.5px; font-weight: 700; letter-spacing: .4px; color: var(--brass); margin-top: 3px; }
+  .ms.critical .ms-when { color: var(--red); }
+  .ms.urgent .ms-when { color: var(--amber); }
+  .ms-tip { font-size: 12.5px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+  .ms-tag { display: inline-block; margin-top: 7px; margin-right: 6px; font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; color: var(--brass); border: 1px solid rgba(201,168,106,.35); }
+  .ms-check { width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px; font-size: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--dim); cursor: pointer; }
+  .ms.done .ms-check { color: var(--green); border-color: rgba(79,192,141,.45); }
+
+  .tip-card { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--brass); border-radius: 11px; padding: 13px 15px; margin-bottom: 9px; }
+  .tip-card h4 { font-family: 'Inter', sans-serif; font-size: 13.5px; font-weight: 700; color: var(--brass-bright); margin-bottom: 5px; }
+  .tip-card p { font-size: 13px; color: var(--dim); line-height: 1.55; }
+  .tip-card p b { color: var(--text); font-weight: 600; }
+
+  .trade { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 14px 15px; margin-bottom: 11px; }
+  .trade h4 { font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; margin-bottom: 3px; }
+  .trade .t-q { font-size: 12.5px; color: var(--dim); line-height: 1.5; margin-bottom: 12px; }
+  .t-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .t-col { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+  .t-col.pick { border-color: var(--brass); background: rgba(201,168,106,.07); }
+  .t-kind { font-size: 9.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; margin-bottom: 6px; }
+  .t-kind.save { color: var(--green); }
+  .t-kind.comfort { color: #7cb8ff; }
+  .t-opt { font-size: 13.5px; font-weight: 600; line-height: 1.35; }
+  .t-cost { font-size: 12.5px; color: var(--brass-bright); margin-top: 5px; font-weight: 600; }
+  .t-why { font-size: 12px; color: var(--dim); margin-top: 6px; line-height: 1.45; }
+  .t-rec { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--dim); line-height: 1.5; }
+  .t-rec b { color: var(--brass-bright); font-weight: 600; }
+
+  .find { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; margin-bottom: 9px; }
+  .find .f-date { flex-shrink: 0; width: 46px; text-align: center; border-right: 1px solid var(--line); padding-right: 11px; }
+  .find .f-date .m { font-size: 9.5px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brass); }
+  .find .f-date .d { font-family: 'Marcellus', serif; font-size: 20px; line-height: 1.1; }
+  .find .f-body { flex: 1; min-width: 0; }
+  .find .f-title { font-size: 14px; font-weight: 600; }
+  .find .f-meta { font-size: 11.5px; color: var(--brass); margin-top: 3px; }
+  .find .f-desc { font-size: 12.5px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+
+  .cut { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; margin-bottom: 9px; }
+  .cut.on { border-color: var(--brass); background: rgba(201,168,106,.07); }
+  .cut-head { display: flex; align-items: center; gap: 10px; }
+  .cut-head .c-ico { font-size: 18px; flex-shrink: 0; }
+  .cut-head .c-name { font-size: 14.5px; font-weight: 600; flex: 1; }
+  .cut-head .c-toggle { min-height: 44px; padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: transparent; border: 1px solid var(--brass); color: var(--brass-bright); cursor: pointer; flex-shrink: 0; }
+  .cut.on .c-toggle { background: var(--brass); color: #1a1408; border-color: var(--brass); }
+  .cut .c-desc { font-size: 12.5px; color: var(--dim); line-height: 1.55; margin-top: 8px; }
+  .cut .c-prep { font-size: 12px; color: var(--amber); margin-top: 7px; line-height: 1.45; }
+
+  .seg { display: flex; gap: 9px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; margin-bottom: 9px; }
+  .seg .s-num { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; background: rgba(201,168,106,.16); color: var(--brass-bright); }
+  .seg input[type=text] { min-height: 44px; font-size: 15px; padding: 10px 12px; flex: 1; min-width: 0; }
+  .seg .nights { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .seg .nights input { width: 56px; min-height: 44px; padding: 10px 4px; text-align: center; font-size: 15px; }
+  .seg .nights span { font-size: 11px; color: var(--dim); letter-spacing: 1px; text-transform: uppercase; }
+  .seg .s-del { width: 44px; height: 44px; flex-shrink: 0; background: transparent; border: none; color: var(--faint); font-size: 18px; cursor: pointer; }
+  .seg-total { font-size: 12.5px; color: var(--dim); text-align: right; margin-top: 4px; }
+  .seg-total b { color: var(--brass-bright); }
+
+  .brief-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .brief-card h3 { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--brass); margin-bottom: 10px; }
+  .brief-row { display: flex; justify-content: space-between; gap: 14px; padding: 7px 0; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .brief-row:last-child { border-bottom: none; }
+  .brief-row .k { color: var(--dim); flex-shrink: 0; }
+  .brief-row .v { text-align: right; font-weight: 500; }
+  .brief-empty { color: var(--faint); font-style: italic; }
+  .next-steps li { font-size: 13.5px; color: var(--dim); line-height: 1.6; margin-left: 18px; margin-bottom: 7px; }
+  .next-steps li b { color: var(--text); font-weight: 600; }
+
+  /* ===== AI panel ===== */
+  .ai-panel { background: var(--surface); border: 1px dashed var(--line); border-radius: 13px; padding: 15px; margin-bottom: 10px; }
+  .ai-panel h4 { font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .ai-panel p { font-size: 12.5px; color: var(--dim); line-height: 1.55; margin-bottom: 12px; }
+  .btn-ai { width: 100%; min-height: 48px; border-radius: 11px; font-size: 14.5px; font-weight: 600; background: transparent; border: 1px solid var(--brass); color: var(--brass-bright); cursor: pointer; }
+  .btn-ai:disabled { opacity: .5; }
+  .ai-badge { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; color: #7cb8ff; border: 1px solid rgba(124,184,255,.4); margin-left: 8px; vertical-align: middle; }
+
+  /* ===== Settings ===== */
+  .set-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .set-card h3 { font-size: 17px; margin-bottom: 6px; }
+  .set-card p { font-size: 13px; color: var(--dim); line-height: 1.55; margin-bottom: 13px; }
+  .set-card p a { color: var(--brass-bright); }
+  .btn-row { display: flex; gap: 9px; }
+  .btn-sm { min-height: 46px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--text); }
+  .btn-sm.primary { background: var(--brass); color: #1a1408; border: none; }
+  .btn-sm.danger { color: var(--red); border-color: rgba(224,101,101,.4); }
+  .status-line { font-size: 12.5px; margin-top: 10px; }
+  .status-line.ok { color: var(--green); }
+  .status-line.off { color: var(--dim); }
+
+  /* ===== Modal ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.68); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+  .modal-box { background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 22px; max-width: 90vw; width: 350px; max-height: 86vh; overflow-y: auto; }
+  .modal-box h3 { font-size: 19px; margin-bottom: 8px; }
+  .modal-box p { font-size: 14px; color: var(--dim); line-height: 1.55; }
+  .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-buttons button { flex: 1; min-height: 48px; border-radius: 11px; font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); }
+  .btn-secondary { background: transparent; color: var(--dim); }
+  .btn-primary { background: var(--brass); color: #1a1408; border: none; }
+  .btn-danger { background: var(--red); color: #2a0d0d; border: none; }
+
+  /* ===== Toast ===== */
+  #toastHost { position: fixed; left: 0; right: 0; bottom: calc(104px + env(safe-area-inset-bottom)); z-index: 1100; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; padding: 0 16px; }
+  .toast { background: var(--surface-2); border: 1px solid var(--line); color: var(--text); font-size: 13.5px; padding: 12px 18px; border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.45); max-width: 100%; }
+  .toast.err { border-color: rgba(224,101,101,.5); color: #ffb4b4; }
+
+  .spinner { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(201,168,106,.3); border-top-color: var(--brass); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header id="appHeader"></header>
+<main id="main"></main>
+<div class="footer" id="appFooter"></div>
+<div id="toastHost"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =======================================================================
+     1. Arizona time helpers  (America/Phoenix, no DST)
+     ======================================================================= */
+  var AZ = {
+    tz: 'America/Phoenix',
+    today: function () { return new Intl.DateTimeFormat('en-CA', { timeZone: this.tz }).format(new Date()); },
+    dateKey: function (d) { return new Intl.DateTimeFormat('en-CA', { timeZone: this.tz }).format(d); },
+    pretty: function (s) {
+      if (!s) return '';
+      var p = s.split('-').map(Number);
+      return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    },
+    weekday: function (s) {
+      if (!s) return '';
+      var p = s.split('-').map(Number);
+      return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    },
+    daysBetween: function (a, b) {
+      return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+    },
+    addDays: function (s, n) {
+      var d = new Date(s + 'T12:00:00');
+      d.setDate(d.getDate() + n);
+      return this.dateKey(d);
+    }
+  };
+
+  /* =======================================================================
+     2. Storage — namespaced, JSON-safe, never throws
+     ======================================================================= */
+  var Store = {
+    ns: 'voyage_',
+    get: function (key, fallback) {
+      if (fallback === undefined) fallback = null;
+      try {
+        var raw = localStorage.getItem(this.ns + key);
+        return raw === null ? fallback : JSON.parse(raw);
+      } catch (e) { return fallback; }
+    },
+    set: function (key, value) {
+      try { localStorage.setItem(this.ns + key, JSON.stringify(value)); return true; }
+      catch (e) { toast('Could not save — device storage is full.', true); return false; }
+    },
+    remove: function (key) { try { localStorage.removeItem(this.ns + key); } catch (e) {} }
+  };
+
+  /* =======================================================================
+     3. Data layer — records with id + updatedAt, deletes are tombstones.
+        Solo/localStorage today; the shape is what a future Gist sync needs.
+     ======================================================================= */
+  var data = Store.get('data', { records: {} });
+  if (!data || typeof data !== 'object' || !data.records) data = { records: {} };
+
+  function uid(prefix) {
+    return (prefix || 'r') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+  }
+  function saveData() {
+    purgeTombstones();
+    Store.set('data', data);
+  }
+  function purgeTombstones() {
+    var cutoff = Date.now() - 60 * 86400000;
+    Object.keys(data.records).forEach(function (id) {
+      var r = data.records[id];
+      if (r && r.deleted && (r.updatedAt || 0) < cutoff) delete data.records[id];
+    });
+  }
+  function putRecord(rec) {
+    rec.updatedAt = Date.now();
+    data.records[rec.id] = rec;
+    saveData();
+    return rec;
+  }
+  function softDelete(id) {
+    var r = data.records[id];
+    if (!r) return;
+    data.records[id] = { id: id, type: r.type, deleted: true, updatedAt: Date.now() };
+    saveData();
+  }
+  function liveRecords(type) {
+    return Object.keys(data.records)
+      .map(function (k) { return data.records[k]; })
+      .filter(function (r) { return r && !r.deleted && (!type || r.type === type); });
+  }
+  function getTrip(id) {
+    var r = data.records[id];
+    return (r && !r.deleted && r.type === 'trip') ? r : null;
+  }
+
+  function newTrip() {
+    var t = {
+      id: uid('trip'), type: 'trip', status: 'draft',
+      answers: {
+        travelers: ['Chris', 'Kat', 'Sedona (12)', 'River (9)'],
+        memberships: {}, booked: [], segments: [], cuts: []
+      },
+      ai: {}, createdAt: Date.now()
+    };
+    return putRecord(t);
+  }
+
+  // Milestone completion lives in its own record so it survives plan regeneration
+  function msDoneId(tripId, key) { return 'msdone_' + tripId + '_' + key; }
+  function isMsDone(tripId, key) {
+    var r = data.records[msDoneId(tripId, key)];
+    return !!(r && !r.deleted && r.done);
+  }
+  function setMsDone(tripId, key, done) {
+    var id = msDoneId(tripId, key);
+    if (done) putRecord({ id: id, type: 'msdone', tripId: tripId, msKey: key, done: true });
+    else softDelete(id);
+  }
+
+  /* =======================================================================
+     4. UI primitives — no alert/confirm/prompt anywhere
+     ======================================================================= */
+  function h(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+
+  function toast(msg, isErr) {
+    var host = document.getElementById('toastHost');
+    var t = h('div', 'toast' + (isErr ? ' err' : ''), msg);
+    host.appendChild(t);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, isErr ? 4200 : 2600);
+  }
+
+  function showModal(o) {
+    var ov = h('div', 'modal-overlay');
+    var bx = h('div', 'modal-box');
+    bx.appendChild(h('h3', null, o.title));
+    if (o.message) bx.appendChild(h('p', null, o.message));
+    if (o.build) o.build(bx);
+    var row = h('div', 'modal-buttons');
+    if (o.cancelText) {
+      var c = h('button', 'btn-secondary', o.cancelText);
+      c.type = 'button';
+      c.addEventListener('click', function () { ov.remove(); });
+      row.appendChild(c);
+    }
+    var ok = h('button', o.danger ? 'btn-danger' : 'btn-primary', o.confirmText || 'OK');
+    ok.type = 'button';
+    ok.addEventListener('click', function () {
+      if (o.onConfirm && o.onConfirm() === false) return;
+      ov.remove();
+    });
+    row.appendChild(ok);
+    bx.appendChild(row);
+    ov.appendChild(bx);
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+    return ov;
+  }
+
+  // Small form modal — replaces prompt()
+  function showFormModal(opts) {
+    var inputs = {};
+    showModal({
+      title: opts.title,
+      message: opts.message,
+      confirmText: opts.confirmText || 'Add',
+      cancelText: 'Cancel',
+      build: function (bx) {
+        opts.fields.forEach(function (f, i) {
+          var l = h('label', 'field');
+          l.style.marginTop = i === 0 ? '16px' : '0';
+          l.appendChild(h('span', 'lbl', f.label));
+          var inp = document.createElement('input');
+          inp.type = f.type || 'text';
+          if (f.placeholder) inp.placeholder = f.placeholder;
+          if (f.value) inp.value = f.value;
+          l.appendChild(inp);
+          bx.appendChild(l);
+          inputs[f.key] = inp;
+        });
+      },
+      onConfirm: function () {
+        var vals = {};
+        Object.keys(inputs).forEach(function (k) { vals[k] = inputs[k].value.trim(); });
+        return opts.onSubmit(vals);
+      }
+    });
+  }
+
+  /* =======================================================================
+     5. Claude API — key from Settings, never hardcoded.
+        Every AI feature is additive; the app is fully usable without a key.
+     ======================================================================= */
+  function hasKey() { return !!Store.get('anthropic_key'); }
+
+  function askClaude(prompt, opts) {
+    opts = opts || {};
+    var key = Store.get('anthropic_key');
+    if (!key) return Promise.reject(new Error('NO_KEY'));
+    return fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: opts.maxTokens || 2000,
+        system: opts.system || undefined,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Claude API error ' + res.status);
+      return res.json();
+    }).then(function (d) {
+      return d.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('\n');
+    });
+  }
+
+  function askClaudeJSON(prompt, opts) {
+    return askClaude(prompt, opts).then(function (txt) {
+      var t = txt.trim();
+      t = t.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      var first = Math.min.apply(null, ['[', '{'].map(function (c) {
+        var i = t.indexOf(c); return i === -1 ? Infinity : i;
+      }));
+      if (first !== Infinity && first > 0) t = t.slice(first);
+      return JSON.parse(t);
+    });
+  }
+
+  /* =======================================================================
+     6. Intake definitions — 8 essentials, a gate, 2 optional refinements
+     ======================================================================= */
+  var ESSENTIALS = 8;
+
+  var STEPS = [
+    { stage: 'Destination', title: 'Where are we headed?',
+      help: 'The place, and whether this is one stop or a few. "No idea yet" is a perfectly good answer.',
+      parts: [
+        { type: 'destination', key: 'destination' },
+        { type: 'shape', key: 'shape', label: 'One stop, or several?',
+          help: 'Plenty of trips are really two or three trips stitched together.' }
+      ] },
+
+    { stage: 'Destination', title: 'What kind of trip is this?',
+      help: 'This decides which booking windows, price rules, and insider traditions I apply to everything else.',
+      parts: [
+        { type: 'single', key: 'tripType', options: [
+          { v: 'cruise', ico: '🚢', label: 'Cruise', sub: 'Booking windows tied to sail date and loyalty tier' },
+          { v: 'themepark', ico: '🎢', label: 'Theme park', sub: 'Park reservations, dining 60 days out, line-skip passes' },
+          { v: 'resort', ico: '🏝️', label: 'Beach / resort', sub: 'All-inclusive or condo stay, low-key pace' },
+          { v: 'city', ico: '🌆', label: 'City trip', sub: 'Museums, food, timed-entry attractions' },
+          { v: 'roadtrip', ico: '🚗', label: 'Road trip', sub: 'Multi-stop driving, national parks' },
+          { v: 'mixed', ico: '🧭', label: 'A mix', sub: 'Combination — a cruise plus land days, say' }
+        ] }
+      ] },
+
+    { stage: 'Timing', title: 'When are you going?',
+      help: 'Exact dates if you have them. If you are flexible I will hunt for the cheapest week in your window.',
+      parts: [
+        { type: 'dates', key: 'dates' },
+        { type: 'multi', key: 'occasion', label: 'Anything special about these dates?',
+          help: 'Holidays and celebrations change pricing, crowds, and what is worth planning around.',
+          options: [
+            { v: 'holiday', ico: '🦃', label: 'Falls on a holiday', sub: 'Thanksgiving, Christmas, spring break…' },
+            { v: 'birthday', ico: '🎂', label: 'A birthday or anniversary', sub: 'Noted for freebies and reservations' },
+            { v: 'family', ico: '👨‍👩‍👧‍👦', label: 'Meeting up with family', sub: 'Coordinating with other households' },
+            { v: 'school', ico: '🎒', label: 'Kids miss school days', sub: 'Worth checking the absence policy' },
+            { v: 'none', ico: '—', label: 'Nothing special', sub: 'Just a getaway' }
+          ] }
+      ] },
+
+    { stage: 'Your Crew', title: 'Who is traveling?',
+      help: 'Ages drive kids-club eligibility, excursion minimums, ride heights, and when adult-only dining is even possible.',
+      parts: [
+        { type: 'travelers', key: 'travelers' },
+        { type: 'single', key: 'pace', label: 'What pace suits this crew?',
+          help: 'So I do not over-schedule a 9-year-old or under-plan a 12-year-old.',
+          options: [
+            { v: 'packed', ico: '⚡', label: 'Pack it in', sub: 'Maximize every day, we rest at home' },
+            { v: 'balanced', ico: '⚖️', label: 'Balanced', sub: 'One or two anchors a day, room to wander' },
+            { v: 'slow', ico: '🌴', label: 'Slow and easy', sub: 'Pool time is the point' }
+          ] }
+      ] },
+
+    { stage: 'Transportation', title: 'How do you get there — and around?',
+      help: 'Departing from Phoenix unless you tell me otherwise. Ground transport is where trips quietly leak money, or quietly get miserable.',
+      parts: [
+        { type: 'single', key: 'transport', label: 'Getting there', options: [
+          { v: 'fly', ico: '✈️', label: 'Flying', sub: 'I will time booking to the fare sweet spot' },
+          { v: 'drive', ico: '🚗', label: 'Driving', sub: 'Route, overnight stops, fuel budget' },
+          { v: 'either', ico: '🤷', label: 'Whichever is cheaper', sub: 'I will compare drive time against airfare' },
+          { v: 'booked', ico: '✅', label: 'Already booked', sub: 'Skip it' }
+        ] },
+        { type: 'multi', key: 'ground', label: 'Once you land',
+          help: 'Pick everything you would consider and I will price them against each other for your party size.',
+          options: [
+            { v: 'rental', ico: '🚙', label: 'Rental car', sub: 'Freedom to roam — watch port and resort parking fees' },
+            { v: 'rideshare', ico: '📱', label: 'Uber / Lyft', sub: 'No parking — costs stack up on multi-stop days' },
+            { v: 'transfer', ico: '🚌', label: 'Cruise or resort transfer', sub: 'Disney bus, hotel shuttle — easiest, rarely cheapest' },
+            { v: 'shuttle', ico: '🚐', label: 'Private shuttle or car service', sub: 'Often beats two Ubers for four people with luggage' },
+            { v: 'transit', ico: '🚇', label: 'Public transit', sub: 'Cheapest by far in the right city' },
+            { v: 'walk', ico: '🚶', label: 'Mostly walking', sub: 'Free, if you pick lodging location carefully' },
+            { v: 'advise', ico: '🧭', label: 'Compare them for me', sub: 'I will run the numbers for each leg' }
+          ] }
+      ] },
+
+    { stage: 'Lodging', title: 'Where are you staying?',
+      help: 'No assumptions — a rental often wins for four people, and cruise cabins follow their own rules.',
+      parts: [
+        { type: 'single', key: 'lodging', options: [
+          { v: 'airbnb', ico: '🏠', label: 'Airbnb / vacation rental', sub: 'Kitchen, space, usually cheaper for four' },
+          { v: 'hotel', ico: '🏨', label: 'Hotel', sub: 'Points, status upgrades, free-cancellation rebooking' },
+          { v: 'resort', ico: '🏖️', label: 'Resort or on-property', sub: 'Package perks and early booking windows' },
+          { v: 'cabin', ico: '🛳️', label: 'Cruise cabin only', sub: 'Plus any pre or post-cruise nights' },
+          { v: 'family', ico: '🛋️', label: 'With family or friends', sub: 'No lodging cost' },
+          { v: 'undecided', ico: '❓', label: 'Not sure yet', sub: 'Help me compare' }
+        ] },
+        { type: 'single', key: 'flanking', label: 'Days before and after the main event?',
+          help: 'Extra days protect against travel delays and are usually where the best local finds live.',
+          options: [
+            { v: 'both', ico: '📆', label: 'Both ends', sub: 'Arrive early, leave late' },
+            { v: 'before', ico: '🌅', label: 'A day before only', sub: 'Buffer against delays' },
+            { v: 'after', ico: '🌇', label: 'A day after only', sub: 'Decompress before flying home' },
+            { v: 'none', ico: '⏱️', label: 'Tight — in and out', sub: 'I will flag the risk if this is a cruise' },
+            { v: 'unsure', ico: '❓', label: 'Advise me', sub: 'Recommend based on my itinerary' }
+          ] },
+        { type: 'multi', key: 'afterVibe', label: 'What should those days look like?',
+          options: [
+            { v: 'explore', ico: '🗺️', label: 'Explore the area properly', sub: 'Treat the gateway city as its own destination' },
+            { v: 'science', ico: '🔭', label: 'Museums, science, aquariums', sub: 'Hands-on stuff' },
+            { v: 'outdoors', ico: '🌊', label: 'Beach, parks, outdoors', sub: 'Burn off kid energy before a flight' },
+            { v: 'food', ico: '🍤', label: 'Eat the local thing', sub: 'The regional food you cannot get at home' },
+            { v: 'rest', ico: '🛌', label: 'Rest and reset', sub: 'Pool, nap, easy dinner' },
+            { v: 'addstop', ico: '➕', label: 'Add a whole extra stop', sub: 'Turn the buffer into a second mini-trip' }
+          ] }
+      ] },
+
+    { stage: 'The Money', title: 'What is the budget?',
+      help: 'A ballpark is fine. It sets the guardrails and tells me when a price is actually a deal.',
+      parts: [
+        { type: 'budget', key: 'budget' },
+        { type: 'multi', key: 'splurge', label: 'Worth paying up for',
+          help: 'Everything you do not pick here gets optimized hard for value.',
+          options: [
+            { v: 'lodging', ico: '🛏️', label: 'Where we stay', sub: 'Space and comfort matter most' },
+            { v: 'food', ico: '🍽️', label: 'Food and dining', sub: 'Specialty restaurants, real meals out' },
+            { v: 'experiences', ico: '🎟️', label: 'Experiences and excursions', sub: 'The stuff the kids remember' },
+            { v: 'flights', ico: '💺', label: 'Comfortable flights', sub: 'Nonstop, seats together, decent times' },
+            { v: 'nothing', ico: '💰', label: 'Save everywhere possible', sub: 'Maximum value hunting' }
+          ] }
+      ] },
+
+    { stage: 'Your Perks', title: 'What memberships or status do you have?',
+      help: 'This is where the real savings and early booking windows come from. Set your exact tier — I will never guess it.',
+      parts: [ { type: 'memberships', key: 'memberships' } ] },
+
+    { stage: 'Almost There', type: 'gate', title: 'That is enough to build a plan',
+      help: 'Last thing: tell me what is already handled so I do not put it on your to-do list. Everything left unchecked becomes a dated milestone.',
+      parts: [
+        { type: 'multi', key: 'booked', options: [
+          { v: 'main', ico: '🎫', label: 'The main event', sub: 'Cruise, park tickets, the core reservation' },
+          { v: 'transport', ico: '✈️', label: 'Flights or transport', sub: '' },
+          { v: 'lodging', ico: '🏠', label: 'Lodging', sub: '' },
+          { v: 'activities', ico: '🎭', label: 'Activities or excursions', sub: '' },
+          { v: 'dining', ico: '🍴', label: 'Dining reservations', sub: '' },
+          { v: 'nothing', ico: '🆕', label: 'Nothing yet — starting fresh', sub: 'I will build the whole plan' }
+        ] }
+      ] },
+
+    { stage: 'Refinements', optional: true, title: 'The insider stuff',
+      help: 'Traditions regulars know about and first-timers miss entirely. Most need prep weeks ahead — say yes and I add it to your timeline.',
+      parts: [ { type: 'cuts', key: 'cuts' } ] },
+
+    { stage: 'Refinements', optional: true, title: 'Anything else I should know?',
+      help: 'Must-dos, hard nos, what the kids are into right now, dietary needs, motion sickness — the details that make a plan actually fit your family.',
+      parts: [ { type: 'notes', key: 'interests' } ] }
+  ];
+
+  var GATE = ESSENTIALS, BRIEF = STEPS.length, PLAN = STEPS.length + 1;
+
+  var LOYALTY = [
+    { id: 'castaway', ico: '🚢', name: 'Disney Castaway Club', tiers: ['Select tier', 'Silver', 'Gold', 'Platinum', 'Pearl'] },
+    { id: 'southwest', ico: '✈️', name: 'Southwest Rapid Rewards', tiers: ['Select tier', 'Member', 'A-List', 'A-List Preferred', 'Companion Pass'] },
+    { id: 'american', ico: '✈️', name: 'American AAdvantage', tiers: ['Select tier', 'Member', 'Gold', 'Platinum', 'Platinum Pro', 'Executive Platinum'] },
+    { id: 'united', ico: '✈️', name: 'United MileagePlus', tiers: ['Select tier', 'Member', 'Silver', 'Gold', 'Platinum', '1K'] },
+    { id: 'marriott', ico: '🏨', name: 'Marriott Bonvoy', tiers: ['Select tier', 'Member', 'Silver', 'Gold', 'Platinum', 'Titanium'] },
+    { id: 'hilton', ico: '🏨', name: 'Hilton Honors', tiers: ['Select tier', 'Member', 'Silver', 'Gold', 'Diamond'] },
+    { id: 'costco', ico: '🛒', name: 'Costco', tiers: ['Select tier', 'Gold Star', 'Executive'] },
+    { id: 'aaa', ico: '🚘', name: 'AAA', tiers: ['Select tier', 'Classic', 'Plus', 'Premier'] },
+    { id: 'card', ico: '💳', name: 'Travel credit card perks', tiers: ['Select tier', 'Amex Platinum', 'Chase Sapphire', 'Capital One Venture', 'Other'] }
+  ];
+  var LOYALTY_NAME = {};
+  LOYALTY.forEach(function (p) { LOYALTY_NAME[p.id] = p.name; });
+
+  /* =======================================================================
+     7. Deep-cuts library — insider traditions, adapts to trip type
+     ======================================================================= */
+  var CUTS = {
+    cruise: [
+      { id: 'fish', ico: '🎣', name: 'Fish extenders',
+        desc: 'A guest-run gift exchange. Families sign up through the sailing’s Facebook group, get assigned a handful of staterooms, and tuck small handmade or bought gifts into a fabric organizer hanging outside each door. For a lot of families it ends up being the best part of the cruise.',
+        prep: 'Join the group and claim a spot 3–4 months out; groups close early. Budget a few dollars per gift and expect a craft project.' },
+      { id: 'pins', ico: '📌', name: 'Pin trading',
+        desc: 'Trade pins with crew anywhere on the ship. Crew must trade if you ask and they have one. A bulk lot bought ahead costs a fraction of onboard prices.',
+        prep: 'Buy a bulk lot online 4–6 weeks ahead — onboard pins run roughly ten times the price.' },
+      { id: 'door', ico: '🚪', name: 'Stateroom door decorating',
+        desc: 'Magnetic decorations on your cabin door. The hallways turn into a gallery and kids hunt for their favorites.',
+        prep: 'Order magnets about 3 weeks out. Must be magnetic, never adhesive.' },
+      { id: 'pirate', ico: '🏴‍☠️', name: 'Pirate night costumes',
+        desc: 'One night is a pirate deck party with fireworks at sea. Costumes bought at home cost a quarter of the onboard shop.',
+        prep: 'Pack from home — a real money-saver.' },
+      { id: 'wine', ico: '🍷', name: 'Bring your own wine',
+        desc: 'Adults may carry aboard a limited amount of wine or beer at embarkation and each port. Corkage is far less than buying the same bottle at the bar.',
+        prep: 'Carry-on only, never checked. Confirm the current per-adult limit.' },
+      { id: 'palo', ico: '🥂', name: 'Adults-only dining',
+        desc: 'The one reservation regulars call non-negotiable — and it books out within minutes of your window opening. Kids clubs cover the same hours.',
+        prep: 'Book the minute your booking window opens, at midnight Eastern.' },
+      { id: 'servers', ico: '🍽️', name: 'Request your servers back',
+        desc: 'Rotational dining means your serving team follows you between restaurants. If you loved a team on a past sailing you can request them again.',
+        prep: 'Email special services about 2 weeks before sailing.' }
+    ],
+    themepark: [
+      { id: 'pins', ico: '📌', name: 'Pin trading', desc: 'Cast members wear lanyards and must trade with kids who ask. A cheap bulk lot from home becomes an all-day scavenger hunt.', prep: 'Buy a starter lot online about a month out.' },
+      { id: 'buttons', ico: '🎉', name: 'Celebration buttons', desc: 'Free buttons at guest services for birthdays, first visits and anniversaries — they trigger small unscripted moments all day.', prep: 'Ask at the first store you pass. Free.' },
+      { id: 'ropedrop', ico: '🌅', name: 'Rope drop strategy', desc: 'The first ninety minutes of the day are worth the next four combined. One early morning beats buying line-skip passes all week.', prep: 'Pick the one day you will actually get up early.' },
+      { id: 'riderswap', ico: '🔄', name: 'Rider swap', desc: 'If one kid is too short, one adult rides while the other waits — then swaps without re-queuing, and the taller kid rides twice.', prep: 'Ask the greeter at the ride entrance.' }
+    ],
+    generic: [
+      { id: 'localfest', ico: '🎪', name: 'Time it to a local event', desc: 'Festivals, night markets, free museum days and seasonal lights are the difference between seeing a place and experiencing it. These rarely surface in guidebooks more than a few weeks ahead.', prep: 'I check event calendars for your exact dates.' },
+      { id: 'earlyaccess', ico: '🎟️', name: 'Timed-entry and free windows', desc: 'Many museums and parks have free or discounted evenings and timed-entry passes that release on a fixed schedule and vanish the same day.', prep: 'Release dates go on your timeline.' },
+      { id: 'localeats', ico: '🍤', name: 'The regional food thing', desc: 'Every place has one dish worth planning a meal around. Locals know where; visitors end up at the chain by the hotel.', prep: 'No prep — just do not eat at the hotel.' }
+    ]
+  };
+  function deepCutsFor(type, trip) {
+    var base = (CUTS[type] || []).concat(CUTS.generic);
+    var extra = (trip && trip.ai && trip.ai.cuts) || [];
+    return base.concat(extra.map(function (c) {
+      return { id: c.id, ico: c.ico || '✨', name: c.name, desc: c.desc, prep: c.prep, ai: true };
+    }));
+  }
+
+  /* =======================================================================
+     8. Rules engine — deterministic booking windows. Works with no API key.
+     ======================================================================= */
+  function A(trip) { return trip.answers || {}; }
+  function isBooked(trip, v) { return (A(trip).booked || []).indexOf(v) > -1; }
+  function hasGround(trip, v) { return (A(trip).ground || []).indexOf(v) > -1; }
+  function isHoliday(trip) { return (A(trip).occasion || []).indexOf('holiday') > -1; }
+
+  function tripTitle(trip) {
+    var a = A(trip);
+    if (a.destination && a.destination !== 'unsure') return a.destination;
+    if (a.shape === 'multi' && (a.segments || []).length && a.segments[0].place) {
+      return a.segments.map(function (s) { return s.place; }).filter(Boolean).join(' → ');
+    }
+    return 'Untitled trip';
+  }
+
+  function castawayWindow(tier) {
+    if (tier === 'Platinum' || tier === 'Pearl') return { days: 120, note: tier + ' unlocks the 120-day window — a full month ahead of Silver.' };
+    if (tier === 'Gold') return { days: 105, note: 'Gold books at 105 days.' };
+    if (tier === 'Silver') return { days: 90, note: 'Silver books at 90 days.' };
+    return { days: 90, note: 'Standard guests book at 90 days. Add your Castaway tier in the trip settings if you have one — it can move this a month earlier.' };
+  }
+
+  var CUT_PREP = {
+    fish: [-110, 'Claim your fish extender group spot', 'Sailing groups fill and close months ahead. Once you are in you get your assigned staterooms and can start on gifts — a weeks-long craft project the kids will run with.'],
+    pins: [-42, 'Order a bulk pin lot', 'Buying pins onboard costs roughly ten times what a bulk lot costs online. Order now and trading starts on day one.'],
+    door: [-21, 'Order stateroom door magnets', 'Must be magnetic, never adhesive. Three weeks covers shipping with room to spare.'],
+    pirate: [-30, 'Sort pirate night costumes', 'Bought at home this is a few dollars a head; bought onboard it is not.'],
+    wine: [-7, 'Pack the wine allowance', 'Carry-on only, never checked. Confirm the current per-adult limit before you pack.'],
+    palo: [-1, 'Adults-only dining — book at window open', 'This goes within minutes. Set a midnight Eastern alarm for the day your booking window opens.'],
+    servers: [-14, 'Email to request your serving team', 'Two weeks out is the sweet spot — early enough to be honored, late enough that the rotation is set.'],
+    buttons: [-2, 'Plan your celebration buttons', 'Free at guest services. Ask on arrival.'],
+    ropedrop: [-10, 'Pick your rope drop day', 'Choose the one morning you will actually be up early, and plan a slow afternoon after it.'],
+    riderswap: [-3, 'Brief the kids on rider swap', 'Worth explaining ahead so nobody is disappointed at the ride entrance.'],
+    localfest: [-45, 'Lock in event tickets for your dates', 'Once the events running during your window are confirmed, the good ones need buying ahead.'],
+    earlyaccess: [-40, 'Watch timed-entry release dates', 'These release on a fixed schedule and are gone the same day.'],
+    localeats: [-21, 'Book the one regional meal', 'Three weeks out is when the good tables open.']
+  };
+
+  function buildMilestones(trip) {
+    var a = A(trip);
+    var start = a.startDate;
+    if (!start) return [];
+    var today = AZ.today();
+    var out = [];
+    var type = a.tripType;
+    var holiday = isHoliday(trip);
+
+    function add(m) { out.push(m); }
+
+    // Main event
+    if (isBooked(trip, 'main')) {
+      add({ key: 'main', date: today, done: true, title: 'Main reservation secured', tip: 'Locked in — everything else builds around this.' });
+    } else {
+      add({
+        key: 'main', date: today, urgency: 'critical',
+        title: type === 'cruise' ? 'Book the sailing' : type === 'themepark' ? 'Buy park tickets' : type === 'resort' ? 'Book the resort' : 'Book the main reservation',
+        when: 'Now — everything else depends on it',
+        tip: type === 'cruise'
+          ? 'Compare booking direct against Costco Travel (shop-card rebate) and agencies that rebate onboard credit — identical cabin, different money back. Holiday sailings sell out first.'
+          : 'Lock the anchor of the trip before prices climb. Look for free-cancellation rates so you can rebook if it drops.',
+        tags: ['Not booked']
+      });
+    }
+
+    // Cruise-specific
+    if (type === 'cruise' || type === 'mixed') {
+      var w = castawayWindow((a.memberships || {}).castaway);
+      add({ key: 'cc_window', date: AZ.addDays(start, -w.days), urgency: 'urgent',
+        title: 'Onboard activity booking window opens',
+        tip: w.note + ' Be online at midnight Eastern the day it opens — adult dining, spa cabanas and the best port adventures go within the hour.',
+        tags: [((a.memberships || {}).castaway ? '★ ' + a.memberships.castaway : 'Castaway Club'), w.days + ' days out'] });
+      add({ key: 'final_pay', date: AZ.addDays(start, -75), title: 'Final payment due',
+        tip: 'Pay before the deadline or the booking auto-cancels. Also the last clean moment to reprice if fares dropped.', tags: ['Deadline'] });
+      add({ key: 'grats', date: AZ.addDays(start, -60), title: 'Lock in gratuities and insurance',
+        tip: 'Pre-paying gratuities holds the current rate against increases. Insurance is cheapest bundled near final payment.' });
+      add({ key: 'checkin', date: AZ.addDays(start, -30), title: 'Online check-in opens',
+        tip: 'Port arrival times release here. The earliest slot means first aboard, lunch before the crowds, and more of day one on the ship.', tags: ['30 days'] });
+    }
+
+    // Theme park
+    if (type === 'themepark') {
+      add({ key: 'tp_dining', date: AZ.addDays(start, -60), urgency: 'urgent', title: 'Dining reservations open (60 days)',
+        tip: 'Character meals and headline restaurants book out the morning the window opens. Have party size and times decided the night before.', tags: ['60 days'] });
+      add({ key: 'tp_lightning', date: AZ.addDays(start, -7), title: 'Decide on line-skip passes',
+        tip: 'Buy only for the days with the longest posted waits — one strategic day usually beats buying every day.' });
+    }
+
+    // Getting there
+    if (!isBooked(trip, 'transport') && a.transport !== 'booked') {
+      if (a.transport === 'drive') {
+        add({ key: 'drive', date: AZ.addDays(start, -45), title: 'Plan the drive and overnight stops',
+          tip: 'Book any midway hotel now; refundable rates mean no risk. Budget fuel plus one unplanned stop.' });
+      } else {
+        var lead = holiday ? 120 : 75;
+        add({ key: 'flights', date: AZ.addDays(start, -lead), urgency: 'urgent', title: 'Book flights',
+          when: holiday ? 'Holiday-week pricing — book early' : 'The fare sweet spot for these dates',
+          tip: holiday
+            ? 'Holiday-week fares climb steeply inside 90 days and rarely dip again. Avoid the Sunday before the holiday and the Sunday after — both are peak fare days.'
+            : 'Domestic fares are typically softest 6–10 weeks out. Set an alert now and book the moment it lands in range.',
+          tags: holiday ? ['Holiday pricing'] : ['Fare window'] });
+      }
+    } else {
+      add({ key: 'transport_done', date: today, done: true, title: 'Transport booked', tip: 'Already handled.' });
+    }
+
+    // Lodging
+    if (!isBooked(trip, 'lodging') && a.lodging !== 'family' && a.lodging !== 'cabin') {
+      add({ key: 'lodging', date: AZ.addDays(start, -90), urgency: 'urgent', title: 'Book lodging',
+        tip: a.lodging === 'airbnb'
+          ? 'For four people a rental usually beats two hotel rooms, and a kitchen kills the breakfast line item. Book the refundable option early — good listings vanish first in peak weeks.'
+          : a.lodging === 'hotel'
+          ? 'Book a free-cancellation rate now and re-check monthly; rebook if the price drops. Apply any status for upgrades.'
+          : 'Reserve a refundable rate early, then keep watching — you can always rebook cheaper.',
+        tags: [a.lodging === 'airbnb' ? 'Rental' : 'Refundable rate'] });
+    } else if (isBooked(trip, 'lodging')) {
+      add({ key: 'lodging_done', date: today, done: true, title: 'Lodging booked', tip: 'Already handled.' });
+    }
+
+    // Extra days
+    if (a.flanking === 'both' || a.flanking === 'before' || a.flanking === 'after') {
+      add({ key: 'flank', date: AZ.addDays(start, -85), title: 'Book the extra nights and plan those days',
+        tip: 'The days on either end are where the local, un-touristy finds live. Arriving a day early is also your insurance against a delayed flight.' });
+    } else if (a.flanking === 'none' && (type === 'cruise' || type === 'mixed')) {
+      add({ key: 'same_day_risk', date: today, urgency: 'critical', title: 'Reconsider same-day arrival',
+        tip: 'A same-day flight to a cruise port is the single biggest risk in this plan — one delay and the ship sails without you. An extra night is cheap insurance.', tags: ['Risk'] });
+    }
+
+    // Dining + activities
+    if (!isBooked(trip, 'dining')) {
+      add({ key: 'dining', date: AZ.addDays(start, -21), title: 'Reserve dinners on land days',
+        tip: 'Three weeks out is when good tables open up in most cities. Book one nice dinner and leave the rest flexible.' });
+    }
+    if (!isBooked(trip, 'activities')) {
+      add({ key: 'activities', date: AZ.addDays(start, -35), title: 'Lock in excursions and activities',
+        tip: 'Check age and height minimums against your youngest before paying — several popular tours have a 10+ floor.' });
+    }
+
+    // Insider prep
+    (a.cuts || []).forEach(function (id) {
+      var c = CUT_PREP[id];
+      if (!c) return;
+      add({ key: 'cut_' + id, date: AZ.addDays(start, c[0]), title: c[1], tip: c[2], tags: ['Insider'] });
+    });
+
+    // Multi-stop
+    if (a.shape === 'multi' && (a.segments || []).length > 1) {
+      add({ key: 'legs', date: AZ.addDays(start, -80), title: 'Book the connections between stops',
+        tip: 'Inter-city legs — drives, trains, or short flights — get more expensive and more awkward the longer you wait. Lock the shape of the trip before the individual pieces.',
+        tags: [a.segments.length + ' stops'] });
+    }
+
+    // Ground transport
+    if ((a.ground || []).length && !isBooked(trip, 'transport')) {
+      add({ key: 'ground', date: AZ.addDays(start, -25), title: 'Lock in ground transportation',
+        tip: hasGround(trip, 'rental')
+          ? 'Rental rates are almost always refundable — book now and re-check monthly, rebooking whenever it drops. Never prepay.'
+          : 'Private shuttles and transfers sell out for holiday weeks. Rideshare needs no booking but budget surge pricing at port and airport peaks.',
+        tags: ['Ground'] });
+    }
+
+    // Final stretch
+    add({ key: 'twoweek', date: AZ.addDays(start, -14), title: 'Two-week checklist',
+      tip: 'Passports and documents, refill prescriptions, motion-sickness supplies, confirm every reservation, arrange pets and mail.' });
+    add({ key: 'final', date: AZ.addDays(start, -3), title: 'Final prep',
+      tip: 'Check in for flights at exactly 24 hours, download offline maps and boarding passes, pack a carry-on day bag for embarkation.' });
+
+    // AI-researched milestones
+    ((trip.ai && trip.ai.milestones) || []).forEach(function (m, i) {
+      if (!m.title) return;
+      var d = m.daysBefore != null ? AZ.addDays(start, -Math.abs(Number(m.daysBefore) || 0)) : today;
+      add({ key: 'ai_' + i, date: d, title: m.title, tip: m.tip || '', tags: ['Researched'], ai: true });
+    });
+
+    out.sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; });
+    out.forEach(function (m) {
+      m.done = m.done || isMsDone(trip.id, m.key);
+      if (m.done) return;
+      var d = AZ.daysBetween(today, m.date);
+      m.daysAway = d;
+      if (!m.when) {
+        m.when = d < 0 ? 'Overdue — was ' + AZ.pretty(m.date)
+          : d === 0 ? 'Today'
+          : d === 1 ? 'Tomorrow · ' + AZ.pretty(m.date)
+          : 'In ' + d + ' days · ' + AZ.pretty(m.date);
+      }
+      if (!m.urgency) m.urgency = d <= 14 ? 'urgent' : '';
+    });
+    return out;
+  }
+
+  function nextAction(trip) {
+    var ms = buildMilestones(trip).filter(function (m) { return !m.done; });
+    return ms.length ? ms[0] : null;
+  }
+
+  function buildItinerary(trip) {
+    var a = A(trip);
+    var start = a.startDate, end = a.endDate;
+    if (!start) return [];
+    var type = a.tripType, flank = a.flanking;
+    var pre = (flank === 'both' || flank === 'before') ? 1 : 0;
+    var post = (flank === 'both' || flank === 'after') ? 1 : 0;
+    var phases = [];
+    var lodgeWord = a.lodging === 'airbnb' ? 'the rental' : a.lodging === 'hotel' ? 'the hotel' : a.lodging === 'family' ? 'family' : 'your lodging';
+
+    if (pre) {
+      phases.push({ ico: '🚗', name: 'Before the main event', when: AZ.pretty(AZ.addDays(start, -1)), days: [{
+        date: AZ.weekday(AZ.addDays(start, -1)),
+        text: (a.transport === 'drive' ? 'Drive in' : 'Fly in') + ' and settle into ' + lodgeWord + '.',
+        note: 'Arriving a day early is your buffer against delays — and tonight’s local dinner is usually cheaper and better than anything at the destination itself.'
+      }] });
+    }
+
+    var mainDays = [{
+      date: AZ.weekday(start),
+      text: type === 'cruise' ? 'Embarkation day — board early, lunch aboard, explore before the crowds settle.'
+        : type === 'themepark' ? 'First park day — rope drop the headliner, then slow down after lunch.'
+        : 'Arrival and first full day — one anchor activity, nothing over-scheduled.',
+      note: a.pace === 'slow' ? 'Kept deliberately light to match your slow pace.' : ''
+    }];
+    if (end && AZ.daysBetween(start, end) > 1) {
+      mainDays.push({
+        date: 'Middle days · ' + AZ.pretty(AZ.addDays(start, 1)) + ' – ' + AZ.pretty(AZ.addDays(end, -1)),
+        text: 'The core of the trip — ports, parks, or exploring, paced to your ' + (a.pace || 'balanced') + ' preference.',
+        note: hasKey() ? 'Run Research below and I will fill these with what is actually happening on your dates.' : 'Add a Claude key in Settings and I can fill these with what is actually happening on your dates.'
+      });
+      mainDays.push({
+        date: AZ.weekday(end),
+        text: type === 'cruise' ? 'Debarkation — off the ship early, one last stop before heading home.' : 'Last day — checkout, one final favorite, head out.',
+        note: post ? '' : 'Tight turnaround. Give yourself a late-afternoon departure if you can.'
+      });
+    }
+    phases.push({ ico: type === 'cruise' ? '🚢' : '🎯', name: 'The main event', when: AZ.pretty(start) + (end ? ' – ' + AZ.pretty(end) : ''), days: mainDays });
+
+    if (post && end) {
+      phases.push({ ico: '🌇', name: 'After', when: AZ.pretty(AZ.addDays(end, 1)), days: [{
+        date: AZ.weekday(AZ.addDays(end, 1)),
+        text: 'One unhurried extra day before the trip home.',
+        note: 'Good slot for the thing you would otherwise rush past on the way to the airport.'
+      }] });
+    }
+    return phases;
+  }
+
+  function buildTradeoffs(trip) {
+    var a = A(trip);
+    var t = [];
+    var party = (a.travelers || []).length || 4;
+    var wantComfort = (a.splurge || []).indexOf('lodging') > -1 || (a.splurge || []).indexOf('flights') > -1;
+    var saveMode = (a.splurge || []).indexOf('nothing') > -1;
+
+    if ((a.ground || []).length) {
+      var gs, gu, gr;
+      if (hasGround(trip, 'transfer') || a.tripType === 'cruise') {
+        gs = { opt: 'Rideshare or private shuttle to the port', cost: 'roughly $60–110 each way', why: 'For a party of ' + party + ' with luggage, one shuttle usually undercuts two rideshares and beats the cruise line bus.' };
+        gu = { opt: 'Cruise line transfer service', cost: 'roughly $40–50 per person each way', why: 'Zero thinking required, luggage handled, and if the bus is late the ship waits for it. That last part is the real product.' };
+        gr = 'Take the transfer on arrival day — the delay protection is worth it — and a shuttle on the way back when nothing is at stake. Skip the rental car entirely if the ship is your hotel; port parking runs about $20 a night for a car that just sits there.';
+      } else {
+        gs = { opt: 'Transit and walking, rideshare for the gaps', cost: 'roughly $15–30 a day', why: 'Works well if you pick lodging near the center. Falls apart fast with tired kids at the end of a long day.' };
+        gu = { opt: 'Rental car for the whole stay', cost: 'roughly $55–85 a day plus parking and fuel', why: 'Freedom to leave when you want, a place to stash the beach bag, and no surge pricing at closing time.' };
+        gr = 'Rent only for the days you actually leave the neighborhood. A two-day rental plus rideshare on the other days usually beats a full-week rental once parking is counted.';
+      }
+      t.push({ title: 'Ground transportation', q: 'How you get around is the most commonly overpaid line on a family trip — in both directions.', save: gs, up: gu, rec: gr, pick: wantComfort ? 'up' : 'save' });
+    }
+
+    if (!isBooked(trip, 'lodging') && a.lodging !== 'family') {
+      t.push({
+        title: 'Where you sleep',
+        q: 'For ' + party + ' people this is usually the single biggest swing in the whole budget.',
+        save: { opt: 'Vacation rental slightly outside the tourist core', cost: 'roughly $140–190 a night', why: 'A kitchen kills the breakfast line item — call it $40 a day back — and everyone gets a real bed. Costs you a short drive.' },
+        up: { opt: 'Well-located hotel or on-property resort', cost: 'roughly $260–340 a night', why: 'You walk to everything, nap mid-day without losing an hour of travel, and someone else makes the beds.' },
+        rec: 'Location beats square footage on short stays; square footage beats location past four nights. With young kids, being able to go back mid-afternoon is worth more than most people expect.',
+        pick: wantComfort ? 'up' : 'save'
+      });
+    }
+
+    if (!isBooked(trip, 'transport') && a.transport !== 'drive' && a.transport !== 'booked') {
+      t.push({
+        title: 'Flights',
+        q: 'The cheapest fare and the right fare are frequently not the same ticket.',
+        save: { opt: 'Connecting flight, basic fare, early morning', cost: 'roughly $90–160 less per person', why: 'Real money — about $' + (130 * party) + ' for your group. Costs you a 4am wake-up and a missed-connection risk.' },
+        up: { opt: 'Nonstop at a civilized hour, seats together', cost: 'the higher fare, plus seat fees', why: 'On a cruise trip a missed connection can cost you the entire vacation. Nonstop is not a luxury here, it is insurance.' },
+        rec: a.tripType === 'cruise'
+          ? 'Fly nonstop if one exists on your route. If you must connect, arrive the day before — never same-day to a sailing.'
+          : 'Take the connection if the savings clear about $400 for the family and the layover is over 90 minutes. Otherwise pay for nonstop.',
+        pick: a.tripType === 'cruise' ? 'up' : (saveMode ? 'save' : 'up')
+      });
+    }
+
+    t.push({
+      title: 'Excursions and activities',
+      q: 'Booked through the operator, or arranged independently?',
+      save: { opt: 'Book directly with local operators', cost: 'commonly 30–50% less', why: 'Same boat, same guide, no middleman. You carry the risk of getting back late on your own.' },
+      up: { opt: 'Book through the cruise line or resort', cost: 'full price', why: 'If the excursion runs late they hold the ship or cover you. With kids, that guarantee has real value.' },
+      rec: 'Book through the operator for anything on your last port day or far from the pier. Book independently for close-in, low-risk outings and put the savings toward one thing the kids will actually remember.',
+      pick: 'save'
+    });
+
+    if ((a.splurge || []).indexOf('food') > -1) {
+      t.push({
+        title: 'Eating well',
+        q: 'You said food matters — so let us spend it where it counts.',
+        save: { opt: 'Breakfast in, big lunch out, casual dinners', cost: 'roughly $90–130 a day for four', why: 'Lunch menus run 20–30% below dinner at the same restaurant, for the same kitchen and the same food.' },
+        up: { opt: 'One standout dinner, everything else relaxed', cost: 'roughly $160–220 for the one night', why: 'A single memorable meal beats five forgettable ones.' },
+        rec: 'Do both: cook breakfast, eat your splurge at lunch prices, and reserve exactly one nice dinner. That is the pattern with the most food happiness per dollar.',
+        pick: 'up'
+      });
+    }
+
+    // AI-researched trade-offs replace generic ranges where available
+    ((trip.ai && trip.ai.tradeoffs) || []).forEach(function (x) {
+      if (x && x.title && x.save && x.up) t.unshift({ title: x.title, q: x.q || '', save: x.save, up: x.up, rec: x.rec || '', pick: x.pick === 'up' ? 'up' : 'save', ai: true });
+    });
+
+    return t;
+  }
+
+  function buildFinds(trip) {
+    return (trip.ai && trip.ai.finds) || [];
+  }
+
+  /* =======================================================================
+     9. App state + routing
+     ======================================================================= */
+  var app = { view: 'trips', tripId: null, step: 0 };
+  var elHeader = document.getElementById('appHeader');
+  var elMain = document.getElementById('main');
+  var elFooter = document.getElementById('appFooter');
+
+  function go(view, tripId, step) {
+    app.view = view;
+    if (tripId !== undefined) app.tripId = tripId;
+    if (step !== undefined) app.step = step;
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function currentTrip() { return app.tripId ? getTrip(app.tripId) : null; }
+
+  function render() {
+    clear(elHeader); clear(elMain); clear(elFooter);
+    renderHeader();
+    if (app.view === 'trips') renderTrips();
+    else if (app.view === 'settings') renderSettings();
+    else if (app.view === 'intake') renderIntake();
+    else if (app.view === 'brief') renderBrief();
+    else if (app.view === 'plan') renderPlan();
+    renderFooter();
+  }
+
+  function renderHeader() {
+    var brand = h('div', 'brand');
+    var mark = h('div', 'brand-mark', 'V');
+    var txt = h('div');
+    txt.appendChild(h('h1', null, 'Voyage Concierge'));
+    txt.appendChild(h('p', null, 'Ortiz Family Travel Desk'));
+    brand.appendChild(mark); brand.appendChild(txt);
+
+    var trip = currentTrip();
+    if ((app.view === 'plan' || app.view === 'brief') && trip) {
+      var edit = h('button', 'hdr-action', 'Edit');
+      edit.type = 'button';
+      edit.addEventListener('click', function () { go('intake', trip.id, 0); });
+      brand.appendChild(edit);
+    }
+    elHeader.appendChild(brand);
+
+    if (app.view === 'intake') {
+      var wrap = h('div', 'progress-wrap');
+      var bar = h('div', 'progress-bar');
+      var fill = h('div', 'progress-fill');
+      fill.id = 'progressFill';
+      bar.appendChild(fill);
+      var meta = h('div', 'progress-meta');
+      var stage = h('span', 'stage'); stage.id = 'stageLabel';
+      var stepL = h('span'); stepL.id = 'stepLabel';
+      meta.appendChild(stage); meta.appendChild(stepL);
+      wrap.appendChild(bar); wrap.appendChild(meta);
+      elHeader.appendChild(wrap);
+    }
+  }
+
+  function renderFooter() {
+    var inner = h('div', 'inner');
+    if (app.view === 'intake' || app.view === 'brief') {
+      var back = h('button', 'btn btn-back', 'Back');
+      back.type = 'button';
+      back.addEventListener('click', intakeBack);
+      if (app.view === 'intake' && app.step === 0) back.style.visibility = 'hidden';
+      var next = h('button', 'btn btn-next', intakeNextLabel());
+      next.type = 'button';
+      next.addEventListener('click', intakeNext);
+      inner.appendChild(back); inner.appendChild(next);
+      elFooter.appendChild(inner);
+      return;
+    }
+    var tabs = h('nav', 'tabs');
+    [
+      { v: 'trips', ico: '🧭', label: 'Trips' },
+      { v: 'new', ico: '✦', label: 'New Trip' },
+      { v: 'settings', ico: '⚙', label: 'Settings' }
+    ].forEach(function (t) {
+      var b = h('button', 'nav-btn' + (app.view === t.v || (t.v === 'trips' && app.view === 'plan') ? ' active' : ''));
+      b.type = 'button';
+      b.appendChild(h('span', 'ico', t.ico));
+      b.appendChild(document.createTextNode(t.label));
+      b.addEventListener('click', function () {
+        if (t.v === 'new') startNewTrip();
+        else go(t.v, null);
+      });
+      tabs.appendChild(b);
+    });
+    elFooter.appendChild(tabs);
+  }
+
+  function startNewTrip() {
+    var t = newTrip();
+    go('intake', t.id, 0);
+  }
+
+  /* =======================================================================
+     10. Trips dashboard
+     ======================================================================= */
+  function renderTrips() {
+    var trips = liveRecords('trip').sort(function (a, b) {
+      var da = (a.answers || {}).startDate || '9999', db = (b.answers || {}).startDate || '9999';
+      return da < db ? -1 : da > db ? 1 : 0;
+    });
+
+    if (!trips.length) {
+      var e = h('div', 'empty');
+      e.appendChild(h('div', 'e-mark', '🧭'));
+      e.appendChild(h('h2', 'serif', 'No voyages yet'));
+      e.appendChild(h('p', null, 'Tell me where you want to go and I will work out the best time, what is worth doing, and exactly when to book each piece to get the most for your money.'));
+      var cta = h('button', 'btn-cta', 'Plan a trip');
+      cta.type = 'button';
+      cta.addEventListener('click', startNewTrip);
+      e.appendChild(cta);
+      elMain.appendChild(e);
+      return;
+    }
+
+    elMain.appendChild(h('div', 'sec-head', trips.length + (trips.length === 1 ? ' voyage' : ' voyages')));
+    trips.forEach(function (trip) {
+      var a = A(trip);
+      var tile = h('button', 'trip-tile');
+      tile.type = 'button';
+      var top = h('div', 'tt-top');
+      var left = h('div');
+      left.appendChild(h('div', 'tt-name', tripTitle(trip)));
+      var bits = [];
+      if (a.tripType) bits.push(labelFor('tripType', a.tripType));
+      if (a.startDate && a.endDate) bits.push(AZ.pretty(a.startDate) + ' – ' + AZ.pretty(a.endDate));
+      else if (a.startDate) bits.push(AZ.pretty(a.startDate));
+      left.appendChild(h('div', 'tt-sub', bits.join(' · ') || 'Dates not set'));
+      top.appendChild(left);
+      if (a.startDate) {
+        var days = AZ.daysBetween(AZ.today(), a.startDate);
+        var cd = h('div', 'tt-count');
+        cd.appendChild(h('div', 'num', days < 0 ? '—' : String(days)));
+        cd.appendChild(h('div', 'lbl', days < 0 ? 'past' : 'days out'));
+        top.appendChild(cd);
+      }
+      tile.appendChild(top);
+
+      if (trip.status === 'draft') {
+        tile.appendChild(h('div', 'tt-draft', 'Draft · tap to finish'));
+      } else {
+        var na = nextAction(trip);
+        if (na) {
+          var n = h('div', 'tt-next');
+          n.appendChild(h('b', null, 'Next: '));
+          n.appendChild(document.createTextNode(na.title + ' — ' + na.when.toLowerCase()));
+          tile.appendChild(n);
+        }
+      }
+      tile.addEventListener('click', function () {
+        if (trip.status === 'draft') go('intake', trip.id, 0);
+        else go('plan', trip.id);
+      });
+      elMain.appendChild(tile);
+    });
+  }
+
+  /* =======================================================================
+     11. Settings
+     ======================================================================= */
+  function renderSettings() {
+    elMain.appendChild(h('div', 'q-eyebrow', 'Settings'));
+    elMain.appendChild(h('h2', 'q-title serif', 'Setup'));
+
+    var body = h('div', 'q-body');
+    elMain.appendChild(body);
+
+    // API key
+    var c1 = h('div', 'set-card');
+    c1.appendChild(h('h3', 'serif', 'Claude API key'));
+    var p1 = h('p', null, 'Optional. With a key I can research what is actually happening on your dates, suggest destinations, and put real numbers on the trade-offs. Everything else — booking windows, milestones, the itinerary skeleton — works without one. Your key is stored only on this device.');
+    c1.appendChild(p1);
+    var keyInput = document.createElement('input');
+    keyInput.type = 'password';
+    keyInput.placeholder = 'sk-ant-...';
+    keyInput.value = Store.get('anthropic_key', '') || '';
+    keyInput.autocomplete = 'off';
+    c1.appendChild(keyInput);
+    var row1 = h('div', 'btn-row');
+    row1.style.marginTop = '12px';
+    var save1 = h('button', 'btn-sm primary', 'Save key');
+    save1.type = 'button';
+    save1.addEventListener('click', function () {
+      var v = keyInput.value.trim();
+      if (!v) { Store.remove('anthropic_key'); toast('Key removed.'); render(); return; }
+      Store.set('anthropic_key', v);
+      toast('Key saved.');
+      render();
+    });
+    var clr1 = h('button', 'btn-sm', 'Remove');
+    clr1.type = 'button';
+    clr1.addEventListener('click', function () {
+      Store.remove('anthropic_key'); keyInput.value = ''; toast('Key removed.'); render();
+    });
+    row1.appendChild(save1); row1.appendChild(clr1);
+    c1.appendChild(row1);
+    c1.appendChild(h('div', 'status-line ' + (hasKey() ? 'ok' : 'off'), hasKey() ? '✓ Research features are on' : 'No key — running on the built-in rules only'));
+    body.appendChild(c1);
+
+    // Data
+    var c2 = h('div', 'set-card');
+    c2.appendChild(h('h3', 'serif', 'Your data'));
+    var trips = liveRecords('trip');
+    c2.appendChild(h('p', null, trips.length + (trips.length === 1 ? ' trip' : ' trips') + ' saved on this device. Nothing is uploaded anywhere. Export gives you a file you can keep or move to another device.'));
+    var row2 = h('div', 'btn-row');
+    var exp = h('button', 'btn-sm', 'Export');
+    exp.type = 'button';
+    exp.addEventListener('click', exportData);
+    var imp = h('button', 'btn-sm', 'Import');
+    imp.type = 'button';
+    imp.addEventListener('click', importData);
+    var wipe = h('button', 'btn-sm danger', 'Erase all');
+    wipe.type = 'button';
+    wipe.addEventListener('click', function () {
+      showModal({
+        title: 'Erase everything?',
+        message: 'This removes every trip on this device. It cannot be undone.',
+        confirmText: 'Erase', cancelText: 'Keep it', danger: true,
+        onConfirm: function () {
+          data = { records: {} };
+          saveData();
+          toast('All trips erased.');
+          go('trips', null);
+        }
+      });
+    });
+    row2.appendChild(exp); row2.appendChild(imp); row2.appendChild(wipe);
+    c2.appendChild(row2);
+    body.appendChild(c2);
+
+    // About
+    var c3 = h('div', 'set-card');
+    c3.appendChild(h('h3', 'serif', 'How this works'));
+    c3.appendChild(h('p', null, 'Booking windows come from a built-in rules library — Castaway Club tiers, theme-park dining windows, holiday fare behavior — so the timeline is always calculated the same way, with or without a key. Research adds what those rules cannot know: this year’s festivals, current prices, and traditions specific to your ship or city. All dates use Arizona time.'));
+    body.appendChild(c3);
+  }
+
+  function exportData() {
+    try {
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'voyage-concierge-' + AZ.today() + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      toast('Exported.');
+    } catch (e) { toast('Export failed on this browser.', true); }
+  }
+
+  function importData() {
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'application/json,.json';
+    inp.addEventListener('change', function () {
+      var f = inp.files && inp.files[0];
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        try {
+          var incoming = JSON.parse(rd.result);
+          if (!incoming || !incoming.records) throw new Error('bad file');
+          // merge: newest updatedAt wins, same rule a future sync would use
+          Object.keys(incoming.records).forEach(function (id) {
+            var rec = incoming.records[id], cur = data.records[id];
+            if (!cur || (rec.updatedAt || 0) > (cur.updatedAt || 0)) data.records[id] = rec;
+          });
+          saveData();
+          toast('Imported and merged.');
+          go('trips', null);
+        } catch (e) { toast('That file could not be read.', true); }
+      };
+      rd.readAsText(f);
+    });
+    inp.click();
+  }
+
+  /* =======================================================================
+     12. Intake — 8 essentials + gate + 2 optional. Autosaves as you go.
+     ======================================================================= */
+  var saveTimer = null;
+  function touchTrip() {
+    var trip = currentTrip();
+    if (!trip) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { putRecord(trip); }, 250);
+  }
+
+  function labelFor(key, val) {
+    for (var i = 0; i < STEPS.length; i++) {
+      var parts = STEPS[i].parts || [];
+      for (var j = 0; j < parts.length; j++) {
+        if (parts[j].key === key && parts[j].options) {
+          var o = parts[j].options.filter(function (x) { return x.v === val; })[0];
+          if (o) return o.label;
+        }
+      }
+    }
+    return val;
+  }
+
+  function optionButton(o, selected) {
+    var b = h('button', 'opt' + (selected ? ' sel' : ''));
+    b.type = 'button';
+    b.appendChild(h('span', 'o-ico', o.ico));
+    var main = h('span', 'o-main');
+    main.appendChild(h('span', 'o-label', o.label));
+    if (o.sub) main.appendChild(h('span', 'o-sub', o.sub));
+    b.appendChild(main);
+    b.appendChild(h('span', 'o-mark'));
+    return b;
+  }
+
+  function intakeNextLabel() {
+    if (app.view === 'brief') return 'Generate my plan';
+    var s = STEPS[app.step];
+    if (!s) return 'Continue';
+    if (s.type === 'gate') return 'Build my plan';
+    if (app.step === STEPS.length - 1) return 'Build my plan';
+    return 'Continue';
+  }
+
+  function intakeNext() {
+    if (app.view === 'brief') {
+      var trip = currentTrip();
+      if (trip) { trip.status = 'active'; putRecord(trip); }
+      go('plan');
+      return;
+    }
+    if (app.step === GATE) { go('brief'); return; }
+    if (app.step >= STEPS.length - 1) { go('brief'); return; }
+    app.step++;
+    render(); window.scrollTo(0, 0);
+  }
+
+  function intakeBack() {
+    if (app.view === 'brief') { app.step = GATE; go('intake'); return; }
+    if (app.step === 0) { go('trips'); return; }
+    app.step--;
+    render(); window.scrollTo(0, 0);
+  }
+
+  function renderIntake() {
+    var trip = currentTrip();
+    if (!trip) { go('trips', null); return; }
+    var a = A(trip);
+    var s = STEPS[app.step];
+    var fill = document.getElementById('progressFill');
+    var stageLabel = document.getElementById('stageLabel');
+    var stepLabel = document.getElementById('stepLabel');
+
+    if (app.step < ESSENTIALS) {
+      fill.style.width = (app.step / ESSENTIALS * 100) + '%';
+      stepLabel.textContent = 'Step ' + (app.step + 1) + ' of ' + ESSENTIALS;
+    } else if (s.type === 'gate') {
+      fill.style.width = '100%';
+      stepLabel.textContent = 'Ready';
+    } else {
+      fill.style.width = '100%';
+      stepLabel.textContent = 'Optional · ' + (app.step - ESSENTIALS) + ' of ' + (STEPS.length - ESSENTIALS - 1);
+    }
+    stageLabel.textContent = s.stage;
+
+    elMain.appendChild(h('div', 'q-eyebrow', s.stage));
+    elMain.appendChild(h('h2', 'q-title serif', s.title));
+    elMain.appendChild(h('p', 'q-help', s.help));
+    var body = h('div', 'q-body');
+    elMain.appendChild(body);
+
+    var solo = s.parts.length === 1;
+    s.parts.forEach(function (p, i) {
+      if (p.label) body.appendChild(h('div', 'part-label' + (i === 0 ? ' first' : ''), p.label));
+      if (p.help) body.appendChild(h('p', 'part-help', p.help));
+      renderPart(p, body, solo, trip, a);
+    });
+
+    if (s.type === 'gate') {
+      var more = optionButton({ v: 'more', ico: '✨', label: 'Two more questions first',
+        sub: 'Insider traditions and anything else I should know — makes the plan noticeably sharper' }, false);
+      more.style.marginTop = '18px';
+      more.addEventListener('click', function () { app.step = ESSENTIALS + 1; render(); window.scrollTo(0, 0); });
+      body.appendChild(more);
+      var gn = h('div', 'note');
+      gn.appendChild(h('b', null, 'Either way: '));
+      gn.appendChild(document.createTextNode('you can add these later from the trip itself — the plan updates when you do.'));
+      body.appendChild(gn);
+    }
+  }
+
+  function renderPart(p, body, solo, trip, a) {
+    if (p.type === 'single' || p.type === 'multi') {
+      var wrap = h('div', 'opts');
+      p.options.forEach(function (o) {
+        var isMulti = p.type === 'multi';
+        var cur = a[p.key];
+        var sel = isMulti ? (Array.isArray(cur) && cur.indexOf(o.v) > -1) : cur === o.v;
+        var b = optionButton(o, sel);
+        b.addEventListener('click', function () {
+          if (isMulti) {
+            var arr = Array.isArray(a[p.key]) ? a[p.key].slice() : [];
+            var idx = arr.indexOf(o.v);
+            if (idx > -1) arr.splice(idx, 1); else arr.push(o.v);
+            a[p.key] = arr;
+            b.classList.toggle('sel');
+          } else {
+            a[p.key] = o.v;
+            wrap.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('sel'); });
+            b.classList.add('sel');
+            if (solo) setTimeout(intakeNext, 180);
+          }
+          touchTrip();
+        });
+        wrap.appendChild(b);
+      });
+      body.appendChild(wrap);
+    }
+
+    if (p.type === 'destination') {
+      body.appendChild(textField('Destination', 'e.g. Galveston, TX — Disney Magic', a, 'destination'));
+      var unsure = optionButton({ v: 'unsure', ico: '🎲', label: 'I have no idea yet',
+        sub: hasKey() ? 'Suggest destinations that fit our crew, dates and budget' : 'Add a Claude key in Settings and I can suggest options' }, a.destination === 'unsure');
+      unsure.addEventListener('click', function () {
+        a.destination = 'unsure';
+        touchTrip();
+        if (!hasKey()) {
+          showModal({ title: 'Research is off', message: 'Add a Claude API key in Settings and I can propose destinations that fit your dates, budget and the kids’ ages. Everything else works without it — carry on and fill the destination in later.', confirmText: 'Got it' });
+          return;
+        }
+        suggestDestinations(trip);
+      });
+      body.appendChild(unsure);
+    }
+
+    if (p.type === 'shape') {
+      var shapeWrap = h('div', 'opts');
+      var segHost = h('div');
+      segHost.style.marginTop = '16px';
+
+      function paintTotal() {
+        var t = segHost.querySelector('.seg-total');
+        if (!t) return;
+        var n = (a.segments || []).reduce(function (acc, x) { return acc + (x.nights || 0); }, 0);
+        clear(t);
+        t.appendChild(document.createTextNode('Total: '));
+        t.appendChild(h('b', null, n + ' nights across ' + a.segments.length + ' stop' + (a.segments.length === 1 ? '' : 's')));
+      }
+      function paintSegs() {
+        clear(segHost);
+        if (a.shape !== 'multi') return;
+        if (!a.segments || !a.segments.length) {
+          a.segments = [{ place: (a.destination && a.destination !== 'unsure') ? a.destination : '', nights: 3 }];
+        }
+        var lbl = h('div', 'q-eyebrow', 'Your stops');
+        lbl.style.marginBottom = '10px';
+        segHost.appendChild(lbl);
+        a.segments.forEach(function (sg, i) {
+          var row = h('div', 'seg');
+          row.appendChild(h('div', 's-num', String(i + 1)));
+          var ti = document.createElement('input');
+          ti.type = 'text'; ti.placeholder = 'Where?'; ti.value = sg.place || '';
+          ti.addEventListener('input', function () { sg.place = ti.value; touchTrip(); });
+          row.appendChild(ti);
+          var nWrap = h('div', 'nights');
+          var ni = document.createElement('input');
+          ni.type = 'number'; ni.min = '0'; ni.value = String(sg.nights == null ? 2 : sg.nights);
+          ni.addEventListener('input', function () { sg.nights = parseInt(ni.value, 10) || 0; paintTotal(); touchTrip(); });
+          nWrap.appendChild(ni);
+          nWrap.appendChild(h('span', null, 'nts'));
+          row.appendChild(nWrap);
+          var del = h('button', 's-del', '✕');
+          del.type = 'button';
+          del.addEventListener('click', function () { a.segments.splice(i, 1); paintSegs(); touchTrip(); });
+          row.appendChild(del);
+          segHost.appendChild(row);
+        });
+        var addSeg = optionButton({ v: 'add', ico: '＋', label: 'Add another stop', sub: 'Somewhere else on the same trip' }, false);
+        addSeg.addEventListener('click', function () { a.segments.push({ place: '', nights: 2 }); paintSegs(); touchTrip(); });
+        segHost.appendChild(addSeg);
+        segHost.appendChild(h('div', 'seg-total'));
+        paintTotal();
+      }
+
+      [
+        { v: 'single', ico: '📍', label: 'One place', sub: 'Single base for the whole trip' },
+        { v: 'multi', ico: '🧳', label: 'Multiple stops', sub: 'Two or more places — I will split nights between them' },
+        { v: 'advise', ico: '🧭', label: 'Tell me what is worth adding', sub: 'Suggest stops near where I am already going' }
+      ].forEach(function (o) {
+        var b = optionButton(o, a.shape === o.v);
+        b.addEventListener('click', function () {
+          a.shape = o.v;
+          shapeWrap.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel');
+          paintSegs(); touchTrip();
+        });
+        shapeWrap.appendChild(b);
+      });
+      body.appendChild(shapeWrap);
+      body.appendChild(segHost);
+      paintSegs();
+      var sn = h('div', 'note');
+      sn.appendChild(h('b', null, 'Why nights matter: '));
+      sn.appendChild(document.createTextNode('Two nights somewhere is a visit; one night is a commute. I will flag any stop too short to be worth the packing.'));
+      body.appendChild(sn);
+    }
+
+    if (p.type === 'dates') {
+      var g = h('div', 'grid2');
+      g.appendChild(dateField('Start date', a, 'startDate'));
+      g.appendChild(dateField('End date', a, 'endDate'));
+      body.appendChild(g);
+      var flexWrap = h('div', 'opts');
+      flexWrap.style.marginTop = '12px';
+      [
+        { v: 'exact', ico: '📌', label: 'These dates are locked', sub: 'Plan around them' },
+        { v: 'flex3', ico: '↔️', label: 'Flexible by a few days', sub: 'Shift for cheaper fares' },
+        { v: 'flexmonth', ico: '📅', label: 'Just this month-ish', sub: 'Find me the best week' }
+      ].forEach(function (o) {
+        var b = optionButton(o, a.flexibility === o.v);
+        b.addEventListener('click', function () {
+          a.flexibility = o.v;
+          flexWrap.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel'); touchTrip();
+        });
+        flexWrap.appendChild(b);
+      });
+      body.appendChild(flexWrap);
+      var n = h('div', 'note');
+      n.appendChild(h('b', null, 'Watching for: '));
+      n.appendChild(document.createTextNode('holiday weeks, school calendars, hurricane season, and local events that spike prices.'));
+      body.appendChild(n);
+    }
+
+    if (p.type === 'travelers') {
+      var list = h('div', 'opts');
+      function paintTravelers() {
+        clear(list);
+        (a.travelers || []).forEach(function (t, i) {
+          var b = optionButton({ v: t, ico: '👤', label: t, sub: 'Tap to remove' }, true);
+          b.addEventListener('click', function () { a.travelers.splice(i, 1); paintTravelers(); touchTrip(); });
+          list.appendChild(b);
+        });
+        var add = optionButton({ v: 'add', ico: '＋', label: 'Add a traveler', sub: 'Name and age' }, false);
+        add.addEventListener('click', function () {
+          showFormModal({
+            title: 'Add a traveler',
+            fields: [
+              { key: 'name', label: 'Name', placeholder: 'Name' },
+              { key: 'age', label: 'Age (optional)', placeholder: 'e.g. 9', type: 'number' }
+            ],
+            onSubmit: function (v) {
+              if (!v.name) { toast('Name is required.', true); return false; }
+              a.travelers.push(v.age ? v.name + ' (' + v.age + ')' : v.name);
+              paintTravelers(); touchTrip();
+            }
+          });
+        });
+        list.appendChild(add);
+      }
+      paintTravelers();
+      body.appendChild(list);
+    }
+
+    if (p.type === 'budget') {
+      var g2 = h('div', 'grid2');
+      g2.appendChild(numField('Target total', '4500', a, 'budgetTotal'));
+      g2.appendChild(numField('Hard ceiling', '6000', a, 'budgetMax'));
+      body.appendChild(g2);
+      var incl = h('div', 'opts');
+      incl.style.marginTop = '12px';
+      [
+        { v: 'all', ico: '🧾', label: 'That covers everything', sub: 'Travel, lodging, food, activities' },
+        { v: 'core', ico: '🎫', label: 'Core costs only', sub: 'Spending money is separate' }
+      ].forEach(function (o) {
+        var b = optionButton(o, a.budgetScope === o.v);
+        b.addEventListener('click', function () {
+          a.budgetScope = o.v;
+          incl.querySelectorAll('.opt').forEach(function (x) { x.classList.remove('sel'); });
+          b.classList.add('sel'); touchTrip();
+        });
+        incl.appendChild(b);
+      });
+      body.appendChild(incl);
+    }
+
+    if (p.type === 'memberships') {
+      if (!a.memberships) a.memberships = {};
+      var mwrap = h('div', 'opts');
+      LOYALTY.forEach(function (prog) {
+        var on = !!a.memberships[prog.id];
+        var b = optionButton({ v: prog.id, ico: prog.ico, label: prog.name, sub: on ? '' : 'Tap to add' }, on);
+        var tierRow = h('div', 'tier-row');
+        var sel = document.createElement('select');
+        prog.tiers.forEach(function (t) {
+          var o = document.createElement('option'); o.textContent = t; o.value = t; sel.appendChild(o);
+        });
+        if (on) sel.value = a.memberships[prog.id];
+        sel.addEventListener('change', function () { a.memberships[prog.id] = sel.value; touchTrip(); });
+        tierRow.appendChild(sel);
+        tierRow.style.display = on ? 'flex' : 'none';
+        b.addEventListener('click', function () {
+          if (a.memberships[prog.id]) {
+            delete a.memberships[prog.id];
+            b.classList.remove('sel'); tierRow.style.display = 'none';
+          } else {
+            a.memberships[prog.id] = sel.value;
+            b.classList.add('sel'); tierRow.style.display = 'flex';
+          }
+          touchTrip();
+        });
+        mwrap.appendChild(b); mwrap.appendChild(tierRow);
+      });
+      var addOwn = optionButton({ v: 'other', ico: '＋', label: 'Something else', sub: 'Military, corporate rate, timeshare, club…' }, false);
+      addOwn.addEventListener('click', function () {
+        showFormModal({
+          title: 'Add a membership',
+          fields: [
+            { key: 'name', label: 'Program', placeholder: 'e.g. Military / USAA' },
+            { key: 'tier', label: 'Tier or level', placeholder: 'e.g. Member' }
+          ],
+          onSubmit: function (v) {
+            if (!v.name) { toast('Program name is required.', true); return false; }
+            var id = 'custom_' + v.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+            a.memberships[id] = v.tier || 'Member';
+            LOYALTY_NAME[id] = v.name;
+            touchTrip(); render();
+          }
+        });
+      });
+      mwrap.appendChild(addOwn);
+      body.appendChild(mwrap);
+      var n2 = h('div', 'note');
+      n2.appendChild(h('b', null, 'Why this matters: '));
+      n2.appendChild(document.createTextNode('Platinum Castaway Club books onboard activities at 120 days out instead of 90 — that gap is the difference between getting the adults-only table and not.'));
+      body.appendChild(n2);
+    }
+
+    if (p.type === 'cuts') {
+      if (!a.cuts) a.cuts = [];
+      deepCutsFor(a.tripType, trip).forEach(function (c) {
+        var on = a.cuts.indexOf(c.id) > -1;
+        var card = h('div', 'cut' + (on ? ' on' : ''));
+        var head = h('div', 'cut-head');
+        head.appendChild(h('span', 'c-ico', c.ico));
+        var nm = h('span', 'c-name', c.name);
+        head.appendChild(nm);
+        var tg = h('button', 'c-toggle', on ? 'We’re in' : 'Count us in');
+        tg.type = 'button';
+        head.appendChild(tg);
+        card.appendChild(head);
+        card.appendChild(h('div', 'c-desc', c.desc));
+        if (c.prep) card.appendChild(h('div', 'c-prep', '⏱ ' + c.prep));
+        tg.addEventListener('click', function () {
+          var i = a.cuts.indexOf(c.id);
+          if (i > -1) { a.cuts.splice(i, 1); card.classList.remove('on'); tg.textContent = 'Count us in'; }
+          else { a.cuts.push(c.id); card.classList.add('on'); tg.textContent = 'We’re in'; }
+          touchTrip();
+        });
+        body.appendChild(card);
+      });
+      var cn = h('div', 'note');
+      cn.appendChild(h('b', null, 'More where these came from: '));
+      cn.appendChild(document.createTextNode(hasKey()
+        ? 'Run Research on the plan screen and I will look for traditions specific to your exact ship, park or city.'
+        : 'With a Claude key I can research traditions specific to your exact ship, park or city.'));
+      body.appendChild(cn);
+    }
+
+    if (p.type === 'notes') {
+      var ta = document.createElement('textarea');
+      ta.placeholder = 'Sedona is into marine biology right now. River gets motion sick. No 6am wake-ups. Kat wants one adults-only dinner.';
+      ta.value = a.interests || '';
+      ta.addEventListener('input', function () { a.interests = ta.value; touchTrip(); });
+      body.appendChild(ta);
+    }
+  }
+
+  function textField(label, ph, a, key) {
+    var l = h('label', 'field');
+    l.appendChild(h('span', 'lbl', label));
+    var i = document.createElement('input');
+    i.type = 'text'; i.placeholder = ph;
+    i.value = (a[key] && a[key] !== 'unsure') ? a[key] : '';
+    i.addEventListener('input', function () { a[key] = i.value; touchTrip(); });
+    l.appendChild(i);
+    return l;
+  }
+  function dateField(label, a, key) {
+    var l = h('label', 'field');
+    l.appendChild(h('span', 'lbl', label));
+    var i = document.createElement('input');
+    i.type = 'date';
+    i.value = a[key] || '';
+    i.addEventListener('input', function () { a[key] = i.value; touchTrip(); });
+    l.appendChild(i);
+    return l;
+  }
+  function numField(label, ph, a, key) {
+    var l = h('label', 'field');
+    l.appendChild(h('span', 'lbl', label));
+    var i = document.createElement('input');
+    i.type = 'number'; i.placeholder = '$' + ph;
+    i.value = a[key] || '';
+    i.addEventListener('input', function () { a[key] = i.value; touchTrip(); });
+    l.appendChild(i);
+    return l;
+  }
+
+  /* =======================================================================
+     13. Trip brief
+     ======================================================================= */
+  function briefRow(card, k, v) {
+    var r = h('div', 'brief-row');
+    r.appendChild(h('span', 'k', k));
+    r.appendChild(h('span', 'v' + (v ? '' : ' brief-empty'), v || 'not set'));
+    card.appendChild(r);
+  }
+
+  function renderBrief() {
+    var trip = currentTrip();
+    if (!trip) { go('trips', null); return; }
+    var a = A(trip);
+
+    elMain.appendChild(h('div', 'q-eyebrow', 'Confirm'));
+    elMain.appendChild(h('h2', 'q-title serif', 'Here is what I have'));
+    elMain.appendChild(h('p', 'q-help', 'Tap Back to change anything. Next I turn this into a day-by-day itinerary and a booking timeline with dated milestones.'));
+    var body = h('div', 'q-body');
+    elMain.appendChild(body);
+
+    var c1 = h('div', 'brief-card');
+    c1.appendChild(h('h3', null, 'The Trip'));
+    briefRow(c1, 'Destination', a.destination === 'unsure' ? 'Needs suggestions' : (a.destination || null));
+    briefRow(c1, 'Type', a.tripType ? labelFor('tripType', a.tripType) : null);
+    var dateStr = null;
+    if (a.startDate && a.endDate) dateStr = AZ.pretty(a.startDate) + ' – ' + AZ.pretty(a.endDate) + ' (' + AZ.daysBetween(a.startDate, a.endDate) + ' nights)';
+    else if (a.startDate) dateStr = AZ.pretty(a.startDate);
+    briefRow(c1, 'Dates', dateStr);
+    if (a.startDate) briefRow(c1, 'Lead time', AZ.daysBetween(AZ.today(), a.startDate) + ' days out');
+    briefRow(c1, 'Flexibility', a.flexibility ? ({ exact: 'Locked', flex3: 'Flexible a few days', flexmonth: 'Flexible within the month' })[a.flexibility] : null);
+    briefRow(c1, 'Travelers', (a.travelers || []).join(', '));
+    briefRow(c1, 'Occasion', (a.occasion || []).map(function (v) { return labelFor('occasion', v); }).join(', '));
+    body.appendChild(c1);
+
+    var c2 = h('div', 'brief-card');
+    c2.appendChild(h('h3', null, 'Logistics'));
+    var shapeTxt = a.shape === 'multi' && (a.segments || []).length
+      ? a.segments.map(function (s) { return (s.place || '?') + ' (' + (s.nights || 0) + 'n)'; }).join(' → ')
+      : (a.shape ? ({ single: 'One place', multi: 'Multiple stops', advise: 'Suggest stops for me' })[a.shape] : null);
+    briefRow(c2, 'Route', shapeTxt);
+    briefRow(c2, 'Getting there', a.transport ? labelFor('transport', a.transport) : null);
+    briefRow(c2, 'Ground transport', (a.ground || []).map(function (v) { return labelFor('ground', v); }).join(', '));
+    briefRow(c2, 'Lodging', a.lodging ? labelFor('lodging', a.lodging) : null);
+    briefRow(c2, 'Extra days', a.flanking ? labelFor('flanking', a.flanking) : null);
+    briefRow(c2, 'Those days', (a.afterVibe || []).map(function (v) { return labelFor('afterVibe', v); }).join(', '));
+    briefRow(c2, 'Insider plans', (a.cuts || []).length ? a.cuts.length + ' opted in' : null);
+    briefRow(c2, 'Pace', a.pace ? labelFor('pace', a.pace) : null);
+    body.appendChild(c2);
+
+    var c3 = h('div', 'brief-card');
+    c3.appendChild(h('h3', null, 'Money & Perks'));
+    briefRow(c3, 'Budget', a.budgetTotal ? ('$' + a.budgetTotal + (a.budgetMax ? ' (max $' + a.budgetMax + ')' : '')) : null);
+    briefRow(c3, 'Splurge on', (a.splurge || []).map(function (v) { return labelFor('splurge', v); }).join(', '));
+    briefRow(c3, 'Memberships', Object.keys(a.memberships || {}).map(function (k) {
+      return (LOYALTY_NAME[k] || k) + ' · ' + a.memberships[k];
+    }).join(' · '));
+    briefRow(c3, 'Already booked', (a.booked || []).map(function (v) { return labelFor('booked', v); }).join(', '));
+    body.appendChild(c3);
+
+    if (a.interests) {
+      var c4 = h('div', 'brief-card');
+      c4.appendChild(h('h3', null, 'Notes'));
+      var pp = h('p', null, a.interests);
+      pp.style.fontSize = '14px'; pp.style.color = 'var(--dim)'; pp.style.lineHeight = '1.55';
+      c4.appendChild(pp);
+      body.appendChild(c4);
+    }
+  }
+
+  /* =======================================================================
+     14. Plan
+     ======================================================================= */
+  function renderPlan() {
+    var trip = currentTrip();
+    if (!trip) { go('trips', null); return; }
+    var a = A(trip);
+    var start = a.startDate;
+
+    var hero = h('div', 'plan-hero');
+    var top = h('div', 'plan-top');
+    var left = h('div');
+    left.appendChild(h('div', 'plan-name serif', tripTitle(trip)));
+    var subBits = [];
+    if (a.tripType) subBits.push(labelFor('tripType', a.tripType));
+    if (start && a.endDate) subBits.push(AZ.pretty(start) + ' – ' + AZ.pretty(a.endDate));
+    else if (start) subBits.push(AZ.pretty(start));
+    left.appendChild(h('div', 'plan-sub', subBits.join(' · ') || 'Dates not set'));
+    top.appendChild(left);
+    if (start) {
+      var days = AZ.daysBetween(AZ.today(), start);
+      var cd = h('div', 'plan-count');
+      cd.appendChild(h('div', 'num', days < 0 ? '—' : String(days)));
+      cd.appendChild(h('div', 'lbl', days < 0 ? 'past' : 'days out'));
+      top.appendChild(cd);
+    }
+    hero.appendChild(top);
+
+    var chips = h('div', 'plan-chips');
+    (a.travelers || []).forEach(function (t) { chips.appendChild(h('span', 'pchip', t)); });
+    Object.keys(a.memberships || {}).forEach(function (k) {
+      chips.appendChild(h('span', 'pchip', '★ ' + (LOYALTY_NAME[k] || k).replace(/^Disney |^American |^Southwest /, '') + ' ' + a.memberships[k]));
+    });
+    if (!isBooked(trip, 'main')) chips.appendChild(h('span', 'pchip warn', '⚠ Main event not booked'));
+    if (isBooked(trip, 'lodging')) chips.appendChild(h('span', 'pchip ok', '✓ Lodging booked'));
+    if (isHoliday(trip)) chips.appendChild(h('span', 'pchip warn', '🦃 Holiday dates'));
+    hero.appendChild(chips);
+    elMain.appendChild(hero);
+
+    if (!start) {
+      var warn = h('div', 'note');
+      warn.appendChild(h('b', null, 'Add dates to unlock the timeline. '));
+      warn.appendChild(document.createTextNode('Milestones are calculated backwards from your start date.'));
+      elMain.appendChild(warn);
+      renderPlanActions(trip);
+      return;
+    }
+
+    // Itinerary
+    elMain.appendChild(h('div', 'sec-head', 'Itinerary'));
+    buildItinerary(trip).forEach(function (ph) {
+      var head = h('div', 'phase-head');
+      head.appendChild(h('div', 'phase-ico', ph.ico));
+      head.appendChild(h('h4', null, ph.name));
+      head.appendChild(h('span', 'ph-when', ph.when));
+      elMain.appendChild(head);
+      ph.days.forEach(function (d) {
+        var card = h('div', 'day');
+        card.appendChild(h('div', 'd-date', d.date));
+        card.appendChild(h('div', 'd-text', d.text));
+        if (d.note) {
+          var n = h('div', 'd-note');
+          n.appendChild(h('b', null, 'Tip: '));
+          n.appendChild(document.createTextNode(d.note));
+          card.appendChild(n);
+        }
+        elMain.appendChild(card);
+      });
+    });
+
+    // Stops
+    if (a.shape === 'multi' && (a.segments || []).length) {
+      elMain.appendChild(h('div', 'sec-head', 'Stops'));
+      a.segments.forEach(function (sg, i) {
+        var card = h('div', 'day');
+        card.appendChild(h('div', 'd-date', 'Stop ' + (i + 1) + ' · ' + (sg.nights || 0) + ' night' + (sg.nights === 1 ? '' : 's')));
+        card.appendChild(h('div', 'd-text', sg.place || 'Unnamed stop'));
+        if ((sg.nights || 0) === 1) {
+          var w = h('div', 'd-note');
+          w.appendChild(h('b', null, 'Heads up: '));
+          w.appendChild(document.createTextNode('One night here means half of it goes to packing and moving. Either give it two nights or cut it and give the time to a stop you care about more.'));
+          card.appendChild(w);
+        }
+        elMain.appendChild(card);
+      });
+    }
+
+    // While you're there (AI)
+    var finds = buildFinds(trip);
+    var fh = h('div', 'sec-head', 'While you’re there');
+    elMain.appendChild(fh);
+    if (finds.length) {
+      var fi = h('p', 'q-help');
+      fi.style.margin = '0 4px 12px';
+      fi.textContent = 'Happening during your exact dates' + (trip.ai && trip.ai.researchedAt ? ' · researched ' + AZ.pretty(trip.ai.researchedAt) : '') + '.';
+      elMain.appendChild(fi);
+      finds.forEach(function (f) {
+        var card = h('div', 'find');
+        var dt = h('div', 'f-date');
+        var parts = (f.date || start).split('-');
+        dt.appendChild(h('div', 'm', new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString('en-US', { month: 'short' })));
+        dt.appendChild(h('div', 'd', String(Number(parts[2]))));
+        card.appendChild(dt);
+        var bd = h('div', 'f-body');
+        bd.appendChild(h('div', 'f-title', f.title || ''));
+        if (f.meta) bd.appendChild(h('div', 'f-meta', f.meta));
+        if (f.desc) bd.appendChild(h('div', 'f-desc', f.desc));
+        card.appendChild(bd);
+        elMain.appendChild(card);
+      });
+    } else {
+      var ap = h('div', 'ai-panel');
+      ap.appendChild(h('h4', null, 'Nothing researched yet'));
+      ap.appendChild(h('p', null, hasKey()
+        ? 'I can look up festivals, seasonal events, timed-entry releases and local traditions running during your exact dates, then add anything that needs booking to your timeline.'
+        : 'Festivals and seasonal events change every year, so this needs a live lookup. Add a Claude API key in Settings to turn it on — everything else on this page works without it.'));
+      var b = h('button', 'btn-ai', hasKey() ? 'Research my dates' : 'Add a key in Settings');
+      b.type = 'button';
+      b.addEventListener('click', function () { hasKey() ? researchTrip(trip, b) : go('settings', null); });
+      ap.appendChild(b);
+      elMain.appendChild(ap);
+    }
+
+    // Trade-offs
+    var trades = buildTradeoffs(trip);
+    if (trades.length) {
+      elMain.appendChild(h('div', 'sec-head', 'Spend it or save it'));
+      var ti = h('p', 'q-help');
+      ti.style.margin = '0 4px 12px';
+      ti.textContent = 'Each decision costs money or costs comfort. Here is the honest version of both, and which way I would lean for your crew.';
+      elMain.appendChild(ti);
+      trades.forEach(function (t) {
+        var card = h('div', 'trade');
+        var hd = h('h4', null, t.title);
+        if (t.ai) hd.appendChild(h('span', 'ai-badge', 'Researched'));
+        card.appendChild(hd);
+        if (t.q) card.appendChild(h('div', 't-q', t.q));
+        var cols = h('div', 't-cols');
+        [['save', t.save, 'Save'], ['up', t.up, 'Upgrade']].forEach(function (pair) {
+          var col = h('div', 't-col' + (t.pick === pair[0] ? ' pick' : ''));
+          col.appendChild(h('div', 't-kind ' + (pair[0] === 'save' ? 'save' : 'comfort'), pair[2]));
+          col.appendChild(h('div', 't-opt', pair[1].opt || ''));
+          if (pair[1].cost) col.appendChild(h('div', 't-cost', pair[1].cost));
+          if (pair[1].why) col.appendChild(h('div', 't-why', pair[1].why));
+          cols.appendChild(col);
+        });
+        card.appendChild(cols);
+        if (t.rec) {
+          var rec = h('div', 't-rec');
+          rec.appendChild(h('b', null, 'My take: '));
+          rec.appendChild(document.createTextNode(t.rec));
+          card.appendChild(rec);
+        }
+        elMain.appendChild(card);
+      });
+    }
+
+    // Insider plans
+    if ((a.cuts || []).length) {
+      elMain.appendChild(h('div', 'sec-head', 'Insider plans'));
+      var all = deepCutsFor(a.tripType, trip);
+      a.cuts.forEach(function (id) {
+        var c = all.filter(function (x) { return x.id === id; })[0];
+        if (!c) return;
+        var card = h('div', 'cut on');
+        var head = h('div', 'cut-head');
+        head.appendChild(h('span', 'c-ico', c.ico));
+        head.appendChild(h('span', 'c-name', c.name));
+        card.appendChild(head);
+        card.appendChild(h('div', 'c-desc', c.desc));
+        if (c.prep) card.appendChild(h('div', 'c-prep', '⏱ ' + c.prep + ' — on your timeline.'));
+        elMain.appendChild(card);
+      });
+    }
+
+    // Timeline
+    var ms = buildMilestones(trip);
+    var todo = ms.filter(function (m) { return !m.done; }).length;
+    elMain.appendChild(h('div', 'sec-head', 'Booking timeline · ' + todo + ' to do'));
+    ms.forEach(function (m) {
+      var row = h('div', 'ms' + (m.done ? ' done' : m.urgency ? ' ' + m.urgency : ''));
+      row.appendChild(h('div', 'ms-dot'));
+      var b = h('div', 'ms-body');
+      var ttl = h('div', 'ms-title', m.title);
+      if (m.ai) ttl.appendChild(h('span', 'ai-badge', 'Researched'));
+      b.appendChild(ttl);
+      b.appendChild(h('div', 'ms-when', m.done ? 'Done' : m.when));
+      if (m.tip) b.appendChild(h('div', 'ms-tip', m.tip));
+      (m.tags || []).forEach(function (t) { b.appendChild(h('span', 'ms-tag', t)); });
+      row.appendChild(b);
+      var chk = h('button', 'ms-check', m.done ? '✓' : '○');
+      chk.type = 'button';
+      chk.setAttribute('aria-label', m.done ? 'Mark not done' : 'Mark done');
+      chk.addEventListener('click', function () {
+        var nowDone = !row.classList.contains('done');
+        setMsDone(trip.id, m.key, nowDone);
+        row.classList.toggle('done', nowDone);
+        chk.textContent = nowDone ? '✓' : '○';
+      });
+      row.appendChild(chk);
+      elMain.appendChild(row);
+    });
+
+    // Advisor notes
+    elMain.appendChild(h('div', 'sec-head', 'Advisor notes'));
+    var notes = [];
+    if (a.budgetTotal) notes.push(['Budget guardrail', 'Target of $' + a.budgetTotal + (a.budgetMax ? ' with a $' + a.budgetMax + ' ceiling' : '') + '. I flag any recommendation that pushes past it and suggest the cheaper swap.']);
+    if ((a.splurge || []).length) notes.push(['Where your money goes', 'You said splurge on ' + a.splurge.map(function (v) { return labelFor('splurge', v).toLowerCase(); }).join(' and ') + '. Everything else gets optimized hard for value.']);
+    if ((a.memberships || {}).costco) notes.push(['Costco angle', 'Costco Travel often prices cruises and packages below direct, and Executive adds a 2% reward on top. Worth a five-minute price check before booking anywhere else.']);
+    if ((a.memberships || {}).castaway) notes.push(['Your Castaway tier is the lever', 'Tier decides your booking-window date, and the popular items go in the first hour. Set an alarm for midnight Eastern on that date.']);
+    if (isHoliday(trip)) notes.push(['Holiday pricing', 'Holiday weeks price differently from the rest of the year: book earlier than normal, expect no last-minute deals, and shift travel days off the peak days on either side.']);
+    ((trip.ai && trip.ai.notes) || []).forEach(function (n) { if (n.title) notes.push([n.title, n.body || '']); });
+    if (!notes.length) notes.push(['Getting sharper', 'Add budget and memberships from Edit and this fills with money-saving angles specific to your trip.']);
+    notes.forEach(function (n) {
+      var c = h('div', 'tip-card');
+      c.appendChild(h('h4', null, n[0]));
+      c.appendChild(h('p', null, n[1]));
+      elMain.appendChild(c);
+    });
+
+    renderPlanActions(trip);
+  }
+
+  function renderPlanActions(trip) {
+    elMain.appendChild(h('div', 'sec-head', 'Trip actions'));
+    if (buildFinds(trip).length && hasKey()) {
+      var again = h('button', 'btn-ai', 'Research again');
+      again.type = 'button';
+      again.style.marginBottom = '10px';
+      again.addEventListener('click', function () { researchTrip(trip, again); });
+      elMain.appendChild(again);
+    }
+    var del = h('button', 'btn-ai');
+    del.type = 'button';
+    del.style.borderColor = 'rgba(224,101,101,.45)';
+    del.style.color = '#ffb4b4';
+    del.textContent = 'Delete this trip';
+    del.addEventListener('click', function () {
+      showModal({
+        title: 'Delete this trip?',
+        message: tripTitle(trip) + ' and its milestones will be removed from this device.',
+        confirmText: 'Delete', cancelText: 'Keep it', danger: true,
+        onConfirm: function () {
+          liveRecords('msdone').filter(function (r) { return r.tripId === trip.id; }).forEach(function (r) { softDelete(r.id); });
+          softDelete(trip.id);
+          toast('Trip deleted.');
+          go('trips', null);
+        }
+      });
+    });
+    elMain.appendChild(del);
+  }
+
+  /* =======================================================================
+     15. Research (Claude) — additive only, never required
+     ======================================================================= */
+  function tripContext(trip) {
+    var a = A(trip);
+    var lines = [];
+    lines.push('Destination: ' + (a.destination && a.destination !== 'unsure' ? a.destination : 'undecided'));
+    if (a.shape === 'multi' && (a.segments || []).length) {
+      lines.push('Stops: ' + a.segments.map(function (s) { return (s.place || '?') + ' for ' + (s.nights || 0) + ' nights'; }).join('; '));
+    }
+    lines.push('Trip type: ' + (a.tripType || 'unspecified'));
+    lines.push('Dates: ' + (a.startDate || '?') + ' to ' + (a.endDate || '?'));
+    lines.push('Travelers: ' + (a.travelers || []).join(', '));
+    if ((a.occasion || []).length) lines.push('Occasion notes: ' + a.occasion.join(', '));
+    lines.push('Getting there: ' + (a.transport || 'unspecified') + '; ground options considered: ' + ((a.ground || []).join(', ') || 'none specified'));
+    lines.push('Lodging: ' + (a.lodging || 'unspecified'));
+    lines.push('Extra days before/after: ' + (a.flanking || 'unspecified') + '; desired flavor: ' + ((a.afterVibe || []).join(', ') || 'unspecified'));
+    if (a.budgetTotal) lines.push('Budget: $' + a.budgetTotal + (a.budgetMax ? ' target, $' + a.budgetMax + ' ceiling' : ''));
+    if ((a.splurge || []).length) lines.push('Willing to splurge on: ' + a.splurge.join(', '));
+    var mem = Object.keys(a.memberships || {}).map(function (k) { return (LOYALTY_NAME[k] || k) + ' ' + a.memberships[k]; });
+    if (mem.length) lines.push('Memberships and status: ' + mem.join('; '));
+    if ((a.booked || []).length) lines.push('Already booked: ' + a.booked.join(', '));
+    lines.push('Pace: ' + (a.pace || 'unspecified'));
+    if (a.interests) lines.push('Family notes: ' + a.interests);
+    return lines.join('\n');
+  }
+
+  var RESEARCH_SYSTEM = 'You are a meticulous family travel advisor. You give specific, verifiable, practical advice — named venues, real booking windows, honest dollar ranges. You never invent events you are not confident actually run. If unsure whether something happens on the given dates, describe it as typical for the season and say so. Respond with ONLY valid JSON, no markdown fences, no commentary.';
+
+  function researchTrip(trip, btn) {
+    var a = A(trip);
+    if (!a.startDate) { toast('Add dates first.', true); return; }
+    setBusy(btn, true, 'Researching…');
+    var prompt = [
+      'Plan research for this family trip.',
+      '',
+      tripContext(trip),
+      '',
+      'Return JSON with this exact shape:',
+      '{',
+      '  "finds": [ { "date": "YYYY-MM-DD", "title": "", "meta": "short line: where / cost / booking need", "desc": "2-3 sentences on why it fits this family and any timing trick" } ],',
+      '  "cuts": [ { "id": "short_slug", "ico": "one emoji", "name": "", "desc": "what it is and why regulars love it", "prep": "what to do and how far ahead" } ],',
+      '  "tradeoffs": [ { "title": "", "q": "", "save": {"opt":"","cost":"","why":""}, "up": {"opt":"","cost":"","why":""}, "rec": "", "pick": "save|up" } ],',
+      '  "milestones": [ { "title": "", "daysBefore": 45, "tip": "" } ],',
+      '  "notes": [ { "title": "", "body": "" } ]',
+      '}',
+      '',
+      'Rules:',
+      '- finds: 3-6 things genuinely happening or seasonally typical during the exact dates, at or near the destination. Include the days before and after the main event. Dates must fall within a few days of the trip window.',
+      '- cuts: up to 4 insider traditions specific to this ship, park, or city that a first-timer would miss. Skip generic advice.',
+      '- tradeoffs: up to 3 decisions with realistic current dollar figures for this destination and party size. Be honest about the downside of each side.',
+      '- milestones: up to 4 dated actions not already obvious (event ticket releases, permit lotteries, seasonal opening dates). daysBefore is days before the start date.',
+      '- notes: up to 3 money or timing insights specific to this destination and these dates.'
+    ].join('\n');
+
+    askClaudeJSON(prompt, { system: RESEARCH_SYSTEM, maxTokens: 4000 }).then(function (out) {
+      trip.ai = trip.ai || {};
+      trip.ai.finds = Array.isArray(out.finds) ? out.finds.slice(0, 8) : [];
+      trip.ai.cuts = Array.isArray(out.cuts) ? out.cuts.slice(0, 6) : [];
+      trip.ai.tradeoffs = Array.isArray(out.tradeoffs) ? out.tradeoffs.slice(0, 4) : [];
+      trip.ai.milestones = Array.isArray(out.milestones) ? out.milestones.slice(0, 6) : [];
+      trip.ai.notes = Array.isArray(out.notes) ? out.notes.slice(0, 4) : [];
+      trip.ai.researchedAt = AZ.today();
+      putRecord(trip);
+      toast('Research added.');
+      render();
+    }).catch(function (e) {
+      setBusy(btn, false);
+      if (e && e.message === 'NO_KEY') { toast('Add a Claude key in Settings first.', true); return; }
+      toast('Research failed — ' + (e && e.message ? e.message : 'try again'), true);
+    });
+  }
+
+  function suggestDestinations(trip) {
+    var a = A(trip);
+    var ov = showModal({ title: 'Thinking…', message: 'Looking for destinations that fit your crew, dates and budget.', confirmText: 'Cancel' });
+    var prompt = [
+      'Suggest three destinations for this family trip.',
+      '',
+      tripContext(trip),
+      '',
+      'Return JSON: {"options":[{"place":"City, State/Country","why":"2 sentences on why it fits this family","when":"best timing note for their dates","cost":"rough total range for the party"}]}',
+      'Be specific and realistic. Vary the three meaningfully in cost and style.'
+    ].join('\n');
+
+    askClaudeJSON(prompt, { system: RESEARCH_SYSTEM, maxTokens: 1500 }).then(function (out) {
+      ov.remove();
+      var opts = (out && out.options) || [];
+      if (!opts.length) { toast('No suggestions came back — try again.', true); return; }
+      showModal({
+        title: 'Three ideas',
+        confirmText: 'Close',
+        build: function (bx) {
+          opts.forEach(function (o) {
+            var card = h('div', 'tip-card');
+            card.style.marginTop = '12px';
+            card.appendChild(h('h4', null, o.place || 'Option'));
+            card.appendChild(h('p', null, [o.why, o.when, o.cost].filter(Boolean).join(' ')));
+            var pick = h('button', 'btn-sm primary', 'Use this');
+            pick.type = 'button';
+            pick.style.marginTop = '10px';
+            pick.addEventListener('click', function () {
+              a.destination = o.place;
+              putRecord(trip);
+              document.querySelectorAll('.modal-overlay').forEach(function (m) { m.remove(); });
+              toast('Destination set.');
+              render();
+            });
+            card.appendChild(pick);
+            bx.appendChild(card);
+          });
+        }
+      });
+    }).catch(function (e) {
+      ov.remove();
+      toast('Could not get suggestions — ' + (e && e.message ? e.message : 'try again'), true);
+    });
+  }
+
+  function setBusy(btn, busy, label) {
+    if (!btn) return;
+    if (busy) {
+      btn.disabled = true;
+      clear(btn);
+      btn.appendChild(h('span', 'spinner'));
+      btn.appendChild(document.createTextNode(label || 'Working…'));
+    } else {
+      btn.disabled = false;
+    }
+  }
+
+  /* =======================================================================
+     16. Boot
+     ======================================================================= */
+  window.addEventListener('beforeunload', function () {
+    var trip = currentTrip();
+    if (trip) putRecord(trip);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
