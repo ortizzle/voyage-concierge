@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1220">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <title>Voyage Concierge</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -140,7 +144,11 @@
     width: 100%; text-align: left; display: block; cursor: pointer;
     background: linear-gradient(135deg, var(--surface-2), var(--surface) 70%);
     border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 16px; margin-bottom: 11px; position: relative; overflow: hidden; color: var(--text);
+    padding: 16px; padding-right: 52px; margin-bottom: 11px; position: relative; overflow: hidden; color: var(--text);
+  }
+  .tt-del {
+    position: absolute; top: 8px; right: 8px; width: 44px; height: 44px; z-index: 2;
+    background: transparent; border: none; color: var(--faint); font-size: 16px; cursor: pointer; border-radius: 10px;
   }
   .trip-tile::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
   .tt-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
@@ -394,12 +402,31 @@
     return (r && !r.deleted && r.type === 'trip') ? r : null;
   }
 
+  // Family profile — memberships and travelers persist across all trips
+  function getProfile() {
+    var p = data.records['profile'];
+    if (!p || p.deleted) {
+      p = { id: 'profile', type: 'profile',
+        travelers: ['Chris', 'Kat', 'Sedona (12)', 'River (9)'],
+        memberships: {}, customNames: {} };
+    }
+    return p;
+  }
+  function saveProfile(patch) {
+    var p = getProfile();
+    Object.keys(patch).forEach(function (k) { p[k] = patch[k]; });
+    putRecord(p);
+    return p;
+  }
+
   function newTrip() {
+    var p = getProfile();
     var t = {
       id: uid('trip'), type: 'trip', status: 'draft',
       answers: {
-        travelers: ['Chris', 'Kat', 'Sedona (12)', 'River (9)'],
-        memberships: {}, booked: [], segments: [], cuts: []
+        travelers: (p.travelers || []).slice(),
+        memberships: JSON.parse(JSON.stringify(p.memberships || {})),
+        booked: [], segments: [], cuts: []
       },
       ai: {}, createdAt: Date.now()
     };
@@ -555,13 +582,21 @@
       help: 'This decides which booking windows, price rules, and insider traditions I apply to everything else.',
       parts: [
         { type: 'single', key: 'tripType', options: [
+          { v: 'getaway', ico: '🏜️', label: 'Weekend getaway', sub: 'Short and close — quick-turn planning, no 90-day windows' },
           { v: 'cruise', ico: '🚢', label: 'Cruise', sub: 'Booking windows tied to sail date and loyalty tier' },
           { v: 'themepark', ico: '🎢', label: 'Theme park', sub: 'Park reservations, dining 60 days out, line-skip passes' },
           { v: 'resort', ico: '🏝️', label: 'Beach / resort', sub: 'All-inclusive or condo stay, low-key pace' },
           { v: 'city', ico: '🌆', label: 'City trip', sub: 'Museums, food, timed-entry attractions' },
           { v: 'roadtrip', ico: '🚗', label: 'Road trip', sub: 'Multi-stop driving, national parks' },
           { v: 'mixed', ico: '🧭', label: 'A mix', sub: 'Combination — a cruise plus land days, say' }
-        ] }
+        ] },
+        { type: 'single', key: 'goal', label: 'Where are we in planning?',
+          help: 'Changes what the plan is for: a to-do timeline, or a hunt for money you can claw back.',
+          options: [
+            { v: 'scratch', ico: '🗺️', label: 'Starting fresh', sub: 'Build the plan and tell me when to book each piece' },
+            { v: 'partial', ico: '🧩', label: 'Partly booked', sub: 'Fill the gaps and optimize the rest' },
+            { v: 'booked', ico: '💰', label: 'Mostly booked — find us savings', sub: 'Audit what we have booked and stretch the budget' }
+          ] }
       ] },
 
     { stage: 'Timing', title: 'When are you going?',
@@ -595,19 +630,28 @@
     { stage: 'Transportation', title: 'How do you get there — and around?',
       help: 'Departing from Phoenix unless you tell me otherwise. Ground transport is where trips quietly leak money, or quietly get miserable.',
       parts: [
-        { type: 'single', key: 'transport', label: 'Getting there', options: [
-          { v: 'fly', ico: '✈️', label: 'Flying', sub: 'I will time booking to the fare sweet spot' },
-          { v: 'drive', ico: '🚗', label: 'Driving', sub: 'Route, overnight stops, fuel budget' },
-          { v: 'either', ico: '🤷', label: 'Whichever is cheaper', sub: 'I will compare drive time against airfare' },
-          { v: 'booked', ico: '✅', label: 'Already booked', sub: 'Skip it' }
-        ] },
-        { type: 'multi', key: 'ground', label: 'Once you land',
+        { type: 'single', key: 'transport', label: 'Getting there', rerender: true, options: function (a) {
+          var fly = { v: 'fly', ico: '✈️', label: 'Flying', sub: 'I will time booking to the fare sweet spot' };
+          var drv = { v: 'drive', ico: '🚗', label: 'Driving our own car', sub: 'Fuel by mileage, overnight stops, wear on the car' };
+          var rest = [
+            { v: 'either', ico: '🤷', label: 'Whichever is cheaper', sub: 'I will compare the real drive cost against airfare' },
+            { v: 'booked', ico: '✅', label: 'Already booked', sub: 'Skip it' }
+          ];
+          // Most-likely-first: short trips and road trips lead with the car
+          return (a.tripType === 'getaway' || a.tripType === 'roadtrip')
+            ? [drv, fly].concat(rest) : [fly, drv].concat(rest);
+        } },
+        { type: 'drivedetails', key: 'drive', label: 'Driving details',
+          help: 'So I can put a real number on fuel instead of hand-waving at it.',
+          showIf: function (a) { return a.transport === 'drive' || a.transport === 'either' || (a.ground || []).indexOf('owncar') > -1; } },
+        { type: 'multi', key: 'ground', label: 'Once you land', rerenderOn: ['owncar'],
           help: 'Pick everything you would consider and I will price them against each other for your party size.',
           options: [
+            { v: 'owncar', ico: '🚘', label: 'Our own car', sub: 'Drove it there — fuel, parking and wear, no rental fee' },
             { v: 'rental', ico: '🚙', label: 'Rental car', sub: 'Freedom to roam — watch port and resort parking fees' },
             { v: 'rideshare', ico: '📱', label: 'Uber / Lyft', sub: 'No parking — costs stack up on multi-stop days' },
-            { v: 'transfer', ico: '🚌', label: 'Cruise or resort transfer', sub: 'Disney bus, hotel shuttle — easiest, rarely cheapest' },
-            { v: 'shuttle', ico: '🚐', label: 'Private shuttle or car service', sub: 'Often beats two Ubers for four people with luggage' },
+            { v: 'transfer', ico: '🚌', label: 'Cruise or resort transfer', sub: 'The official bus or hotel shuttle — easiest, rarely cheapest' },
+            { v: 'shuttle', ico: '🚐', label: 'Private shuttle or car service', sub: function (a) { return partySize(a) >= 3 ? 'Often beats two rideshares for ' + partyWord(a) + ' people with luggage' : 'Fixed price, luggage handled — compare against a single rideshare'; } },
             { v: 'transit', ico: '🚇', label: 'Public transit', sub: 'Cheapest by far in the right city' },
             { v: 'walk', ico: '🚶', label: 'Mostly walking', sub: 'Free, if you pick lodging location carefully' },
             { v: 'advise', ico: '🧭', label: 'Compare them for me', sub: 'I will run the numbers for each leg' }
@@ -615,10 +659,10 @@
       ] },
 
     { stage: 'Lodging', title: 'Where are you staying?',
-      help: 'No assumptions — a rental often wins for four people, and cruise cabins follow their own rules.',
+      help: 'No assumptions — the right answer changes with group size, trip length, and whether the trip is the destination or the base camp.',
       parts: [
         { type: 'single', key: 'lodging', options: [
-          { v: 'airbnb', ico: '🏠', label: 'Airbnb / vacation rental', sub: 'Kitchen, space, usually cheaper for four' },
+          { v: 'airbnb', ico: '🏠', label: 'Airbnb / vacation rental', sub: function (a) { return partySize(a) >= 3 ? 'Kitchen, space, usually cheaper for ' + partyWord(a) : 'Kitchen and space — though for two, a good hotel deal often wins'; } },
           { v: 'hotel', ico: '🏨', label: 'Hotel', sub: 'Points, status upgrades, free-cancellation rebooking' },
           { v: 'resort', ico: '🏖️', label: 'Resort or on-property', sub: 'Package perks and early booking windows' },
           { v: 'cabin', ico: '🛳️', label: 'Cruise cabin only', sub: 'Plus any pre or post-cruise nights' },
@@ -627,6 +671,7 @@
         ] },
         { type: 'single', key: 'flanking', label: 'Days before and after the main event?',
           help: 'Extra days protect against travel delays and are usually where the best local finds live.',
+          showIf: function (a) { return a.tripType !== 'getaway'; },
           options: [
             { v: 'both', ico: '📆', label: 'Both ends', sub: 'Arrive early, leave late' },
             { v: 'before', ico: '🌅', label: 'A day before only', sub: 'Buffer against delays' },
@@ -635,10 +680,11 @@
             { v: 'unsure', ico: '❓', label: 'Advise me', sub: 'Recommend based on my itinerary' }
           ] },
         { type: 'multi', key: 'afterVibe', label: 'What should those days look like?',
+          showIf: function (a) { return a.tripType !== 'getaway' && a.flanking && a.flanking !== 'none'; },
           options: [
             { v: 'explore', ico: '🗺️', label: 'Explore the area properly', sub: 'Treat the gateway city as its own destination' },
             { v: 'science', ico: '🔭', label: 'Museums, science, aquariums', sub: 'Hands-on stuff' },
-            { v: 'outdoors', ico: '🌊', label: 'Beach, parks, outdoors', sub: 'Burn off kid energy before a flight' },
+            { v: 'outdoors', ico: '🌊', label: 'Beach, parks, outdoors', sub: function (a) { return hasKids(a) ? 'Burn off kid energy before a flight' : 'One last dose of outside before heading home'; } },
             { v: 'food', ico: '🍤', label: 'Eat the local thing', sub: 'The regional food you cannot get at home' },
             { v: 'rest', ico: '🛌', label: 'Rest and reset', sub: 'Pool, nap, easy dinner' },
             { v: 'addstop', ico: '➕', label: 'Add a whole extra stop', sub: 'Turn the buffer into a second mini-trip' }
@@ -651,17 +697,21 @@
         { type: 'budget', key: 'budget' },
         { type: 'multi', key: 'splurge', label: 'Worth paying up for',
           help: 'Everything you do not pick here gets optimized hard for value.',
-          options: [
-            { v: 'lodging', ico: '🛏️', label: 'Where we stay', sub: 'Space and comfort matter most' },
-            { v: 'food', ico: '🍽️', label: 'Food and dining', sub: 'Specialty restaurants, real meals out' },
-            { v: 'experiences', ico: '🎟️', label: 'Experiences and excursions', sub: 'The stuff the kids remember' },
-            { v: 'flights', ico: '💺', label: 'Comfortable flights', sub: 'Nonstop, seats together, decent times' },
-            { v: 'nothing', ico: '💰', label: 'Save everywhere possible', sub: 'Maximum value hunting' }
-          ] }
+          options: function (a) {
+            var list = [
+              { v: 'lodging', ico: '🛏️', label: 'Where we stay', sub: 'Space and comfort matter most' },
+              { v: 'food', ico: '🍽️', label: 'Food and dining', sub: 'Specialty restaurants, real meals out' },
+              { v: 'experiences', ico: '🎟️', label: 'Experiences and excursions', sub: 'The stuff everyone remembers' }
+            ];
+            if (a.transport !== 'drive') list.push({ v: 'flights', ico: '💺', label: 'Comfortable flights', sub: 'Nonstop, seats together, decent times' });
+            else list.push({ v: 'drivecomfort', ico: '🛣️', label: 'A comfortable drive', sub: 'A real hotel midway, meals that are not drive-thru, no marathon days' });
+            list.push({ v: 'nothing', ico: '💰', label: 'Save everywhere possible', sub: 'Maximum value hunting' });
+            return list;
+          } }
       ] },
 
-    { stage: 'Your Perks', title: 'What memberships or status do you have?',
-      help: 'This is where the real savings and early booking windows come from. Set your exact tier — I will never guess it.',
+    { stage: 'Your Perks', title: 'Your memberships',
+      help: 'Remembered from previous trips — confirm what applies here, add anything new. New memberships and tier changes are saved to your family profile so you never re-enter them; unchecking one only skips it for this trip.',
       parts: [ { type: 'memberships', key: 'memberships' } ] },
 
     { stage: 'Almost There', type: 'gate', title: 'That is enough to build a plan',
@@ -687,9 +737,18 @@
   ];
 
   var GATE = ESSENTIALS, BRIEF = STEPS.length, PLAN = STEPS.length + 1;
+  function partySize(a) { return (a.travelers || []).length || 4; }
+  function partyWord(a) { var n = partySize(a); return n === 1 ? 'one' : n === 2 ? 'two' : n === 3 ? 'three' : n === 4 ? 'four' : String(n); }
+  function hasKids(a) {
+    return (a.travelers || []).some(function (t) {
+      var m = t.match(/\((\d+)\)/);
+      return m && Number(m[1]) < 18;
+    });
+  }
 
   var LOYALTY = [
     { id: 'castaway', ico: '🚢', name: 'Disney Castaway Club', tiers: ['Select tier', 'Silver', 'Gold', 'Platinum', 'Pearl'] },
+    { id: 'dvc', ico: '🏰', name: 'Disney Vacation Club', tiers: ['Select home resort', 'Grand Floridian', 'Polynesian', 'Copper Creek', 'Bay Lake Tower', 'Beach Club', 'BoardWalk', 'Animal Kingdom', 'Riviera', 'Saratoga Springs', 'Old Key West', 'Grand Californian', 'Aulani', 'Other'] },
     { id: 'southwest', ico: '✈️', name: 'Southwest Rapid Rewards', tiers: ['Select tier', 'Member', 'A-List', 'A-List Preferred', 'Companion Pass'] },
     { id: 'american', ico: '✈️', name: 'American AAdvantage', tiers: ['Select tier', 'Member', 'Gold', 'Platinum', 'Platinum Pro', 'Executive Platinum'] },
     { id: 'united', ico: '✈️', name: 'United MileagePlus', tiers: ['Select tier', 'Member', 'Silver', 'Gold', 'Platinum', '1K'] },
@@ -701,31 +760,56 @@
   ];
   var LOYALTY_NAME = {};
   LOYALTY.forEach(function (p) { LOYALTY_NAME[p.id] = p.name; });
+  // Restore custom program names saved to the family profile
+  (function () {
+    var pr = data.records['profile'];
+    if (pr && !pr.deleted && pr.customNames) {
+      Object.keys(pr.customNames).forEach(function (k) { LOYALTY_NAME[k] = pr.customNames[k]; });
+    }
+  })();
 
   /* =======================================================================
      7. Deep-cuts library — insider traditions, adapts to trip type
      ======================================================================= */
+  function isDisneyTrip(trip) {
+    var a = A(trip);
+    if ((a.memberships || {}).castaway) return true;
+    var txt = [a.destination, a.interests].concat((a.segments || []).map(function (s) { return s.place; })).join(' ');
+    return /disney|dcl|castaway|mickey/i.test(txt);
+  }
+
   var CUTS = {
+    getaway: [
+      { id: 'firstnight', ico: '🌆', name: 'Arrive on the fun, not the check-in',
+        desc: 'Book something for the first two hours — a reservation, a tour, a sunset spot. Getaways that start with "let’s get settled first" lose half a day of a two-day trip.',
+        prep: 'One booking for arrival evening. That is the whole trick.' },
+      { id: 'sundaysecret', ico: '🕐', name: 'The late-checkout play',
+        desc: 'The last day of a weekend trip usually dies at 11am checkout. A late checkout, a hotel that holds bags, or a car trunk turns it back into a full day.',
+        prep: 'Ask at booking, not at the desk — status tiers often get 2pm free.' },
+      { id: 'localnight', ico: '🎟️', name: 'Whatever the locals do that weekend',
+        desc: 'Small-town weekend calendars — night markets, gallery walks, minor-league games, star parties — are the cheapest great memories available and never show up in a top-ten list.',
+        prep: 'I check the local calendar for your exact weekend.' }
+    ],
     cruise: [
-      { id: 'fish', ico: '🎣', name: 'Fish extenders',
+      { id: 'fish', ico: '🎣', name: 'Fish extenders', dcl: true,
         desc: 'A guest-run gift exchange. Families sign up through the sailing’s Facebook group, get assigned a handful of staterooms, and tuck small handmade or bought gifts into a fabric organizer hanging outside each door. For a lot of families it ends up being the best part of the cruise.',
         prep: 'Join the group and claim a spot 3–4 months out; groups close early. Budget a few dollars per gift and expect a craft project.' },
-      { id: 'pins', ico: '📌', name: 'Pin trading',
+      { id: 'pins', ico: '📌', name: 'Pin trading', dcl: true,
         desc: 'Trade pins with crew anywhere on the ship. Crew must trade if you ask and they have one. A bulk lot bought ahead costs a fraction of onboard prices.',
         prep: 'Buy a bulk lot online 4–6 weeks ahead — onboard pins run roughly ten times the price.' },
       { id: 'door', ico: '🚪', name: 'Stateroom door decorating',
         desc: 'Magnetic decorations on your cabin door. The hallways turn into a gallery and kids hunt for their favorites.',
         prep: 'Order magnets about 3 weeks out. Must be magnetic, never adhesive.' },
-      { id: 'pirate', ico: '🏴‍☠️', name: 'Pirate night costumes',
+      { id: 'pirate', ico: '🏴‍☠️', name: 'Pirate night costumes', dcl: true,
         desc: 'One night is a pirate deck party with fireworks at sea. Costumes bought at home cost a quarter of the onboard shop.',
         prep: 'Pack from home — a real money-saver.' },
       { id: 'wine', ico: '🍷', name: 'Bring your own wine',
         desc: 'Adults may carry aboard a limited amount of wine or beer at embarkation and each port. Corkage is far less than buying the same bottle at the bar.',
         prep: 'Carry-on only, never checked. Confirm the current per-adult limit.' },
-      { id: 'palo', ico: '🥂', name: 'Adults-only dining',
+      { id: 'palo', ico: '🥂', name: 'Adults-only dining', dcl: true,
         desc: 'The one reservation regulars call non-negotiable — and it books out within minutes of your window opening. Kids clubs cover the same hours.',
         prep: 'Book the minute your booking window opens, at midnight Eastern.' },
-      { id: 'servers', ico: '🍽️', name: 'Request your servers back',
+      { id: 'servers', ico: '🍽️', name: 'Request your servers back', dcl: true,
         desc: 'Rotational dining means your serving team follows you between restaurants. If you loved a team on a past sailing you can request them again.',
         prep: 'Email special services about 2 weeks before sailing.' }
     ],
@@ -742,7 +826,12 @@
     ]
   };
   function deepCutsFor(type, trip) {
-    var base = (CUTS[type] || []).concat(CUTS.generic);
+    var base = (CUTS[type] || []);
+    // DCL traditions only show for Disney sailings; other lines get the generic cruise items
+    if ((type === 'cruise' || type === 'mixed') && trip && !isDisneyTrip(trip)) {
+      base = base.filter(function (c) { return !c.dcl; });
+    }
+    base = base.concat(CUTS.generic);
     var extra = (trip && trip.ai && trip.ai.cuts) || [];
     return base.concat(extra.map(function (c) {
       return { id: c.id, ico: c.ico || '✨', name: c.name, desc: c.desc, prep: c.prep, ai: true };
@@ -797,19 +886,43 @@
     var out = [];
     var type = a.tripType;
     var holiday = isHoliday(trip);
+    var lead = AZ.daysBetween(today, start);   // days until departure
+    var short = type === 'getaway' || (lead >= 0 && lead <= 30);
+    var audit = a.goal === 'booked';
 
     function add(m) { out.push(m); }
+    // Schedule at N days before start, clamped to today when the ideal
+    // window has already passed. Booking windows get flagged; prep items clamp silently.
+    function sched(idealDaysBefore, opts) {
+      var d = AZ.addDays(start, -idealDaysBefore);
+      if (d < today) return { date: today, late: !(opts && opts.soft) };
+      return { date: d, late: false };
+    }
+    function lateWhen(s) { return s.late ? 'Ideal window has passed — do this now' : null; }
 
     // Main event
     if (isBooked(trip, 'main')) {
-      add({ key: 'main', date: today, done: true, title: 'Main reservation secured', tip: 'Locked in — everything else builds around this.' });
+      if (audit && (type === 'cruise' || type === 'mixed')) {
+        var rp = sched(76);
+        add({ key: 'reprice_main', date: rp.date, urgency: rp.late ? 'urgent' : '',
+          title: 'Reprice the cruise before final payment', when: lateWhen(rp),
+          tip: 'Until final payment you can usually rebook at today’s fare with one phone call if the price dropped. Check the current rate for your exact cabin class — five minutes, occasionally hundreds back.', tags: ['Savings'] });
+      } else if (audit) {
+        add({ key: 'reprice_main', date: today,
+          title: 'Reprice the main reservation',
+          tip: 'If it was booked on a refundable rate, check today’s price for the same thing. Rebook-and-cancel beats loyalty to your own receipt.', tags: ['Savings'] });
+      } else {
+        add({ key: 'main', date: today, done: true, title: 'Main reservation secured', tip: 'Locked in — everything else builds around this.' });
+      }
     } else {
       add({
         key: 'main', date: today, urgency: 'critical',
-        title: type === 'cruise' ? 'Book the sailing' : type === 'themepark' ? 'Buy park tickets' : type === 'resort' ? 'Book the resort' : 'Book the main reservation',
+        title: type === 'cruise' ? 'Book the sailing' : type === 'themepark' ? 'Buy park tickets' : type === 'resort' ? 'Book the resort' : type === 'getaway' ? 'Lock in the getaway anchor' : 'Book the main reservation',
         when: 'Now — everything else depends on it',
         tip: type === 'cruise'
           ? 'Compare booking direct against Costco Travel (shop-card rebate) and agencies that rebate onboard credit — identical cabin, different money back. Holiday sailings sell out first.'
+          : type === 'getaway'
+          ? 'Short trips punish indecision — weekend inventory is what sells out first. Book the one thing the weekend is built around, refundable if possible.'
           : 'Lock the anchor of the trip before prices climb. Look for free-cancellation rates so you can rebook if it drops.',
         tags: ['Not booked']
       });
@@ -817,61 +930,114 @@
 
     // Cruise-specific
     if (type === 'cruise' || type === 'mixed') {
-      var w = castawayWindow((a.memberships || {}).castaway);
-      add({ key: 'cc_window', date: AZ.addDays(start, -w.days), urgency: 'urgent',
-        title: 'Onboard activity booking window opens',
+      var w = isDisneyTrip(trip)
+        ? castawayWindow((a.memberships || {}).castaway)
+        : { days: 90, note: 'Booking windows vary by line and loyalty tier — most open specialty dining, shows and excursions 60–120 days out. Check yours and set an alarm for the day it opens.' };
+      var cw = sched(w.days);
+      add({ key: 'cc_window', date: cw.date, urgency: 'urgent',
+        title: 'Onboard activity booking window opens', when: cw.late ? 'Your window is already open — book today' : null,
         tip: w.note + ' Be online at midnight Eastern the day it opens — adult dining, spa cabanas and the best port adventures go within the hour.',
-        tags: [((a.memberships || {}).castaway ? '★ ' + a.memberships.castaway : 'Castaway Club'), w.days + ' days out'] });
-      add({ key: 'final_pay', date: AZ.addDays(start, -75), title: 'Final payment due',
+        tags: [((a.memberships || {}).castaway ? '★ ' + a.memberships.castaway : 'Loyalty tier'), w.days + ' days out'] });
+      var fp = sched(75);
+      add({ key: 'final_pay', date: fp.date, title: 'Final payment due', when: lateWhen(fp),
         tip: 'Pay before the deadline or the booking auto-cancels. Also the last clean moment to reprice if fares dropped.', tags: ['Deadline'] });
-      add({ key: 'grats', date: AZ.addDays(start, -60), title: 'Lock in gratuities and insurance',
+      var gr = sched(60, { soft: true });
+      add({ key: 'grats', date: gr.date, title: 'Lock in gratuities and insurance',
         tip: 'Pre-paying gratuities holds the current rate against increases. Insurance is cheapest bundled near final payment.' });
-      add({ key: 'checkin', date: AZ.addDays(start, -30), title: 'Online check-in opens',
+      var ci = sched(30);
+      add({ key: 'checkin', date: ci.date, title: 'Online check-in opens', when: ci.late ? 'Check-in is already open — grab the earliest port arrival slot' : null,
         tip: 'Port arrival times release here. The earliest slot means first aboard, lunch before the crowds, and more of day one on the ship.', tags: ['30 days'] });
     }
 
     // Theme park
     if (type === 'themepark') {
-      add({ key: 'tp_dining', date: AZ.addDays(start, -60), urgency: 'urgent', title: 'Dining reservations open (60 days)',
-        tip: 'Character meals and headline restaurants book out the morning the window opens. Have party size and times decided the night before.', tags: ['60 days'] });
-      add({ key: 'tp_lightning', date: AZ.addDays(start, -7), title: 'Decide on line-skip passes',
+      var td = sched(60);
+      add({ key: 'tp_dining', date: td.date, urgency: 'urgent', title: 'Dining reservations open (60 days)', when: td.late ? 'Window is open — book whatever is left today, and check daily for drops' : null,
+        tip: 'Character meals and headline restaurants book out the morning the window opens. Cancellations reappear day-of — keep checking.', tags: ['60 days'] });
+      var tl = sched(7, { soft: true });
+      add({ key: 'tp_lightning', date: tl.date, title: 'Decide on line-skip passes',
         tip: 'Buy only for the days with the longest posted waits — one strategic day usually beats buying every day.' });
     }
 
     // Getting there
     if (!isBooked(trip, 'transport') && a.transport !== 'booked') {
       if (a.transport === 'drive') {
-        add({ key: 'drive', date: AZ.addDays(start, -45), title: 'Plan the drive and overnight stops',
-          tip: 'Book any midway hotel now; refundable rates mean no risk. Budget fuel plus one unplanned stop.' });
+        var dEst = driveEstimate(trip);
+        var dr = sched(short ? Math.max(1, Math.floor(lead * 0.7)) : 45, { soft: true });
+        add({ key: 'drive', date: dr.date, title: 'Plan the route and overnight stops',
+          tip: dEst
+            ? 'About ' + dEst.miles.toLocaleString('en-US') + ' miles, roughly ' + Math.round(dEst.hours) + ' hours each way' +
+              (dEst.fuel != null ? ' and around ' + money(dEst.fuel) + ' in fuel' : '') +
+              (short ? '.' : '. Book any midway hotel now on a refundable rate, and budget one unplanned stop.')
+            : 'Book any midway hotel now; refundable rates mean no risk. Add your mileage from Edit and I can budget fuel properly.',
+          tags: ['Own car'] });
+        var cp = sched(short ? Math.max(1, lead - 2) : 14, { soft: true });
+        add({ key: 'carprep', date: cp.date, title: short ? 'Quick car check before the drive' : 'Service the car before a long drive',
+          tip: (short ? 'Tires, oil light, wipers and a full tank the day before. ' : 'Oil, tires and brakes checked two weeks out leaves time to fix anything found. ') +
+            'Confirm roadside coverage' +
+            ((a.memberships || {}).aaa ? ' — your AAA ' + a.memberships.aaa + ' membership covers towing, worth knowing the limit before you need it.' : ' before you go.'),
+          tags: ['Own car'] });
       } else {
-        var lead = holiday ? 120 : 75;
-        add({ key: 'flights', date: AZ.addDays(start, -lead), urgency: 'urgent', title: 'Book flights',
-          when: holiday ? 'Holiday-week pricing — book early' : 'The fare sweet spot for these dates',
+        var fl = sched(short ? Math.max(1, Math.floor(lead * 0.8)) : (holiday ? 120 : 75));
+        add({ key: 'flights', date: fl.date, urgency: 'urgent', title: 'Book flights',
+          when: fl.late ? 'The sweet spot has passed — every day of waiting costs money now' : (holiday ? 'Holiday-week pricing — book early' : short ? 'Short lead — sooner beats cheaper-someday' : 'The fare sweet spot for these dates'),
           tip: holiday
             ? 'Holiday-week fares climb steeply inside 90 days and rarely dip again. Avoid the Sunday before the holiday and the Sunday after — both are peak fare days.'
+            : short
+            ? 'Inside 30 days, fares only go one direction. Check nearby airports and one-stop routings before paying the nonstop premium on a short hop.'
             : 'Domestic fares are typically softest 6–10 weeks out. Set an alert now and book the moment it lands in range.',
           tags: holiday ? ['Holiday pricing'] : ['Fare window'] });
       }
+    } else if (audit && (isBooked(trip, 'transport') || a.transport === 'booked') && a.transport !== 'drive') {
+      add({ key: 'farewatch', date: today, title: 'Watch your booked fare for drops',
+        tip: 'On most US carriers a fare drop on your exact flight can be rebooked for credit with no change fee on standard fares. Check weekly; it takes two minutes.', tags: ['Savings'] });
     } else {
       add({ key: 'transport_done', date: today, done: true, title: 'Transport booked', tip: 'Already handled.' });
     }
 
     // Lodging
     if (!isBooked(trip, 'lodging') && a.lodging !== 'family' && a.lodging !== 'cabin') {
-      add({ key: 'lodging', date: AZ.addDays(start, -90), urgency: 'urgent', title: 'Book lodging',
+      var lo = sched(short ? Math.max(1, Math.floor(lead * 0.9)) : 90);
+      add({ key: 'lodging', date: lo.date, urgency: 'urgent', title: 'Book lodging', when: lateWhen(lo),
         tip: a.lodging === 'airbnb'
-          ? 'For four people a rental usually beats two hotel rooms, and a kitchen kills the breakfast line item. Book the refundable option early — good listings vanish first in peak weeks.'
+          ? (partySize(a) >= 3
+              ? 'For ' + partyWord(a) + ' people a rental usually beats multiple hotel rooms, and a kitchen kills the breakfast line item. '
+              : 'For two, compare against hotel deals — but a kitchen still kills the breakfast line item. ') + 'Book the refundable option early — good listings vanish first in peak weeks.'
           : a.lodging === 'hotel'
-          ? 'Book a free-cancellation rate now and re-check monthly; rebook if the price drops. Apply any status for upgrades.'
+          ? 'Book a free-cancellation rate now and re-check ' + (short ? 'every few days' : 'monthly') + '; rebook if the price drops. Apply any status for upgrades.'
           : 'Reserve a refundable rate early, then keep watching — you can always rebook cheaper.',
         tags: [a.lodging === 'airbnb' ? 'Rental' : 'Refundable rate'] });
     } else if (isBooked(trip, 'lodging')) {
-      add({ key: 'lodging_done', date: today, done: true, title: 'Lodging booked', tip: 'Already handled.' });
+      if (audit) {
+        add({ key: 'reprice_lodging', date: today, title: 'Reprice your lodging',
+          tip: a.lodging === 'airbnb'
+            ? 'Rentals rarely reprice, but check comparable listings — if yours has free cancellation and a near-identical place is meaningfully cheaper, switch.'
+            : 'If it is a free-cancellation rate, check tonight’s price for the same room. Rebooking a cheaper rate on the same reservation is the easiest money in travel.', tags: ['Savings'] });
+      } else {
+        add({ key: 'lodging_done', date: today, done: true, title: 'Lodging booked', tip: 'Already handled.' });
+      }
+    }
+
+    // DVC — home-resort window beats the general one by four months
+    if ((a.memberships || {}).dvc && isDisneyTrip(trip) && (a.lodging === 'resort' || a.lodging === 'undecided' || type === 'themepark')) {
+      var home = a.memberships.dvc;
+      var validHome = home && home !== 'Select home resort';
+      var d11 = sched(330);
+      add({ key: 'dvc11', date: d11.date, title: 'DVC 11-month window' + (validHome ? ': ' + home : ' (home resort)'),
+        when: d11.late ? 'Window is open — book your home resort now if you want it' : null,
+        tip: (validHome ? 'As a ' + home + ' owner you book there at 11 months out — four months before everyone else. ' : 'Your home resort books at 11 months out. ') + 'Popular room types and holiday weeks go at the 11-month mark, not the 7.',
+        tags: ['DVC', '11 months'] });
+      var d7 = sched(210);
+      add({ key: 'dvc7', date: d7.date, title: 'DVC 7-month window: all other resorts',
+        when: d7.late ? 'The 7-month window is open — check availability today' : null,
+        tip: 'At 7 months every DVC resort opens to you. If you banked or borrowed points, confirm the math before booking — borrowed points are non-refundable once used.',
+        tags: ['DVC', '7 months'] });
     }
 
     // Extra days
     if (a.flanking === 'both' || a.flanking === 'before' || a.flanking === 'after') {
-      add({ key: 'flank', date: AZ.addDays(start, -85), title: 'Book the extra nights and plan those days',
+      var fk = sched(short ? Math.max(1, lead - 2) : 85, { soft: true });
+      add({ key: 'flank', date: fk.date, title: 'Book the extra nights and plan those days',
         tip: 'The days on either end are where the local, un-touristy finds live. Arriving a day early is also your insurance against a delayed flight.' });
     } else if (a.flanking === 'none' && (type === 'cruise' || type === 'mixed')) {
       add({ key: 'same_day_risk', date: today, urgency: 'critical', title: 'Reconsider same-day arrival',
@@ -880,31 +1046,43 @@
 
     // Dining + activities
     if (!isBooked(trip, 'dining')) {
-      add({ key: 'dining', date: AZ.addDays(start, -21), title: 'Reserve dinners on land days',
-        tip: 'Three weeks out is when good tables open up in most cities. Book one nice dinner and leave the rest flexible.' });
+      var dn = sched(short ? Math.min(10, Math.max(1, lead - 3)) : 21, { soft: true });
+      add({ key: 'dining', date: dn.date, title: short ? 'Book the one meal that matters' : 'Reserve dinners on land days',
+        tip: short
+          ? 'For a getaway, one great reservation is plenty — book it now and wing the rest. Weekend prime-time tables in small towns go days ahead, not hours.'
+          : 'Three weeks out is when good tables open up in most cities. Book one nice dinner and leave the rest flexible.' });
+    } else if (audit) {
+      add({ key: 'dining_swap', date: sched(short ? 3 : 14, { soft: true }).date, title: 'Re-shop the dining plan',
+        tip: 'Same restaurants, cheaper slots: lunch menus run 20–30% below dinner, and early seatings often have deals the prime slots do not.', tags: ['Savings'] });
     }
     if (!isBooked(trip, 'activities')) {
-      add({ key: 'activities', date: AZ.addDays(start, -35), title: 'Lock in excursions and activities',
+      var ac = sched(short ? Math.min(7, Math.max(1, lead - 2)) : 35, { soft: true });
+      add({ key: 'activities', date: ac.date, title: 'Lock in excursions and activities',
         tip: 'Check age and height minimums against your youngest before paying — several popular tours have a 10+ floor.' });
+    } else if (audit) {
+      add({ key: 'activities_audit', date: today, title: 'Audit booked activities for cheaper routes in',
+        tip: 'Check each booked activity for a Costco/AAA rate, a city pass that bundles it, or a direct-with-operator price. Refundable bookings can be rebooked the cheaper way.', tags: ['Savings'] });
     }
 
     // Insider prep
     (a.cuts || []).forEach(function (id) {
       var c = CUT_PREP[id];
       if (!c) return;
-      add({ key: 'cut_' + id, date: AZ.addDays(start, c[0]), title: c[1], tip: c[2], tags: ['Insider'] });
+      var cs = sched(-c[0], { soft: true });
+      add({ key: 'cut_' + id, date: cs.date, title: c[1], tip: c[2], tags: ['Insider'] });
     });
 
     // Multi-stop
     if (a.shape === 'multi' && (a.segments || []).length > 1) {
-      add({ key: 'legs', date: AZ.addDays(start, -80), title: 'Book the connections between stops',
+      var lg = sched(short ? Math.max(1, lead - 1) : 80);
+      add({ key: 'legs', date: lg.date, title: 'Book the connections between stops', when: lateWhen(lg),
         tip: 'Inter-city legs — drives, trains, or short flights — get more expensive and more awkward the longer you wait. Lock the shape of the trip before the individual pieces.',
         tags: [a.segments.length + ' stops'] });
     }
 
     // Ground transport
     if ((a.ground || []).length && !isBooked(trip, 'transport')) {
-      add({ key: 'ground', date: AZ.addDays(start, -25), title: 'Lock in ground transportation',
+      add({ key: 'ground', date: sched(short ? Math.min(5, Math.max(1, lead - 1)) : 25, { soft: true }).date, title: 'Lock in ground transportation',
         tip: hasGround(trip, 'rental')
           ? 'Rental rates are almost always refundable — book now and re-check monthly, rebooking whenever it drops. Never prepay.'
           : 'Private shuttles and transfers sell out for holiday weeks. Rideshare needs no booking but budget surge pricing at port and airport peaks.',
@@ -912,10 +1090,12 @@
     }
 
     // Final stretch
-    add({ key: 'twoweek', date: AZ.addDays(start, -14), title: 'Two-week checklist',
-      tip: 'Passports and documents, refill prescriptions, motion-sickness supplies, confirm every reservation, arrange pets and mail.' });
-    add({ key: 'final', date: AZ.addDays(start, -3), title: 'Final prep',
-      tip: 'Check in for flights at exactly 24 hours, download offline maps and boarding passes, pack a carry-on day bag for embarkation.' });
+    if (!short) {
+      add({ key: 'twoweek', date: sched(14, { soft: true }).date, title: 'Two-week checklist',
+        tip: 'Passports and documents, refill prescriptions, motion-sickness supplies, confirm every reservation, arrange pets and mail.' });
+    }
+    add({ key: 'final', date: sched(short ? 1 : 3, { soft: true }).date, title: 'Final prep',
+      tip: (a.transport === 'fly' ? 'Check in for flights at exactly 24 hours, download offline maps and boarding passes' : 'Download offline maps, confirm reservations') + (short ? ', and pack light — a getaway with checked bags is a getaway with a line in it.' : ', pack a carry-on day bag for arrival day.') });
 
     // AI-researched milestones
     ((trip.ai && trip.ai.milestones) || []).forEach(function (m, i) {
@@ -998,22 +1178,52 @@
   function buildTradeoffs(trip) {
     var a = A(trip);
     var t = [];
-    var party = (a.travelers || []).length || 4;
-    var wantComfort = (a.splurge || []).indexOf('lodging') > -1 || (a.splurge || []).indexOf('flights') > -1;
+    var party = partySize(a);
+    var kids = hasKids(a);
+    var wantComfort = (a.splurge || []).indexOf('lodging') > -1;
     var saveMode = (a.splurge || []).indexOf('nothing') > -1;
+
+    // Driving vs flying — only meaningful once we know the miles
+    var de = driveEstimate(trip);
+    if (de && (a.transport === 'drive' || a.transport === 'either')) {
+      var fuelTxt = de.fuel != null ? money(de.fuel) + ' in gas' : 'fuel';
+      var perPerson = party ? Math.round(de.allIn / party) : 0;
+      t.push({
+        title: 'Driving vs flying',
+        q: de.miles.toLocaleString('en-US') + ' miles round trip, roughly ' + Math.round(de.hours) + ' hours behind the wheel each way.',
+        save: {
+          opt: 'Drive your own car',
+          cost: fuelTxt + ' — about ' + money(de.allIn) + ' all-in',
+          why: 'Gas alone looks cheap, but tires, maintenance and depreciation are real. All-in it works out to roughly ' + money(perPerson) + ' a head, and you arrive with a car you do not have to rent. Costs you two travel days and any hotel on the way.'
+        },
+        up: {
+          opt: 'Fly and rent at the other end',
+          cost: 'airfare for ' + party + ' plus roughly $55–85 a day for a car',
+          why: 'Buys back two full days of vacation and arrives with everyone in a decent mood. Add parking and the rental easily passes what the drive costs.'
+        },
+        rec: 'The honest break-even is time, not money. Under about 8 hours each way, driving usually wins for a family of ' + party + ' once four airfares and a rental are counted. Past that, the two lost days cost more than the fare — and if this trip has a fixed start you cannot miss, flying is also the safer bet.',
+        pick: de.hours > 8 ? 'up' : 'save'
+      });
+    }
 
     if ((a.ground || []).length) {
       var gs, gu, gr;
-      if (hasGround(trip, 'transfer') || a.tripType === 'cruise') {
+      if (hasGround(trip, 'owncar')) {
+        gs = { opt: 'Your own car, parked cheap', cost: de && de.fuel != null ? 'about ' + money(de.fuel * 0.25) + ' in local fuel' : 'fuel only',
+          why: 'You already drove it there — the marginal cost of using it locally is just gas. Hunt for off-site or hotel parking instead of paying resort rates.' };
+        gu = { opt: 'Park at the door and pay for it', cost: 'roughly $20–45 a night for resort or port parking',
+          why: 'Zero walking with luggage' + (hasKids(a) ? ' and tired kids' : '') + ', no shuttle timetable. At a cruise port this is dead money for a car that sits all week.' };
+        gr = 'Since the car is already there, this is only a parking decision. Off-site lots with a shuttle typically run half of on-site — worth it for a week-long stay, not worth the hassle for two nights.';
+      } else if (hasGround(trip, 'transfer') || a.tripType === 'cruise') {
         gs = { opt: 'Rideshare or private shuttle to the port', cost: 'roughly $60–110 each way', why: 'For a party of ' + party + ' with luggage, one shuttle usually undercuts two rideshares and beats the cruise line bus.' };
         gu = { opt: 'Cruise line transfer service', cost: 'roughly $40–50 per person each way', why: 'Zero thinking required, luggage handled, and if the bus is late the ship waits for it. That last part is the real product.' };
         gr = 'Take the transfer on arrival day — the delay protection is worth it — and a shuttle on the way back when nothing is at stake. Skip the rental car entirely if the ship is your hotel; port parking runs about $20 a night for a car that just sits there.';
       } else {
-        gs = { opt: 'Transit and walking, rideshare for the gaps', cost: 'roughly $15–30 a day', why: 'Works well if you pick lodging near the center. Falls apart fast with tired kids at the end of a long day.' };
+        gs = { opt: 'Transit and walking, rideshare for the gaps', cost: 'roughly $15–30 a day', why: 'Works well if you pick lodging near the center. Falls apart fast with ' + (hasKids(a) ? 'tired kids' : 'tired feet') + ' at the end of a long day.' };
         gu = { opt: 'Rental car for the whole stay', cost: 'roughly $55–85 a day plus parking and fuel', why: 'Freedom to leave when you want, a place to stash the beach bag, and no surge pricing at closing time.' };
         gr = 'Rent only for the days you actually leave the neighborhood. A two-day rental plus rideshare on the other days usually beats a full-week rental once parking is counted.';
       }
-      t.push({ title: 'Ground transportation', q: 'How you get around is the most commonly overpaid line on a family trip — in both directions.', save: gs, up: gu, rec: gr, pick: wantComfort ? 'up' : 'save' });
+      t.push({ title: 'Ground transportation', q: 'How you get around is the most commonly overpaid line on a family trip — in both directions.', save: gs, up: gu, rec: gr, pick: 'save' });
     }
 
     if (!isBooked(trip, 'lodging') && a.lodging !== 'family') {
@@ -1022,7 +1232,7 @@
         q: 'For ' + party + ' people this is usually the single biggest swing in the whole budget.',
         save: { opt: 'Vacation rental slightly outside the tourist core', cost: 'roughly $140–190 a night', why: 'A kitchen kills the breakfast line item — call it $40 a day back — and everyone gets a real bed. Costs you a short drive.' },
         up: { opt: 'Well-located hotel or on-property resort', cost: 'roughly $260–340 a night', why: 'You walk to everything, nap mid-day without losing an hour of travel, and someone else makes the beds.' },
-        rec: 'Location beats square footage on short stays; square footage beats location past four nights. With young kids, being able to go back mid-afternoon is worth more than most people expect.',
+        rec: 'Location beats square footage on short stays; square footage beats location past four nights. ' + (hasKids(a) ? 'With young kids, being able to go back mid-afternoon is worth more than most people expect.' : 'Being able to walk back mid-afternoon is worth more than most people expect.') + '',
         pick: wantComfort ? 'up' : 'save'
       });
     }
@@ -1036,7 +1246,7 @@
         rec: a.tripType === 'cruise'
           ? 'Fly nonstop if one exists on your route. If you must connect, arrive the day before — never same-day to a sailing.'
           : 'Take the connection if the savings clear about $400 for the family and the layover is over 90 minutes. Otherwise pay for nonstop.',
-        pick: a.tripType === 'cruise' ? 'up' : (saveMode ? 'save' : 'up')
+        pick: a.tripType === 'cruise' ? 'up' : 'save'
       });
     }
 
@@ -1044,8 +1254,8 @@
       title: 'Excursions and activities',
       q: 'Booked through the operator, or arranged independently?',
       save: { opt: 'Book directly with local operators', cost: 'commonly 30–50% less', why: 'Same boat, same guide, no middleman. You carry the risk of getting back late on your own.' },
-      up: { opt: 'Book through the cruise line or resort', cost: 'full price', why: 'If the excursion runs late they hold the ship or cover you. With kids, that guarantee has real value.' },
-      rec: 'Book through the operator for anything on your last port day or far from the pier. Book independently for close-in, low-risk outings and put the savings toward one thing the kids will actually remember.',
+      up: { opt: 'Book through the cruise line or resort', cost: 'full price', why: 'If the excursion runs late they hold the ship or cover you. ' + (hasKids(a) ? 'With kids, that guarantee has real value.' : 'On a tight itinerary, that guarantee has real value.') + '' },
+      rec: 'Book through the operator for anything on your last port day or far from the pier. Book independently for close-in, low-risk outings and put the savings toward one thing ' + (hasKids(a) ? 'the kids' : 'everyone') + ' will actually remember.',
       pick: 'save'
     });
 
@@ -1070,6 +1280,59 @@
 
   function buildFinds(trip) {
     return (trip.ai && trip.ai.finds) || [];
+  }
+
+  /* ---- Google Calendar link for a milestone (native reminders on the Pixels) ---- */
+  function gcalUrl(title, dateStr, details) {
+    var d0 = dateStr.replace(/-/g, '');
+    var d1 = AZ.addDays(dateStr, 1).replace(/-/g, '');
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + encodeURIComponent('✈️ ' + title) +
+      '&dates=' + d0 + '/' + d1 +
+      '&details=' + encodeURIComponent((details || '') + '\n\n— Voyage Concierge');
+  }
+
+  /* ---- Trip phase for the day-of view ---- */
+  function tripPhaseToday(trip) {
+    var a = A(trip);
+    if (!a.startDate) return null;
+    var today = AZ.today();
+    var pre = (a.flanking === 'both' || a.flanking === 'before') ? 1 : 0;
+    var post = (a.flanking === 'both' || a.flanking === 'after') ? 1 : 0;
+    var first = AZ.addDays(a.startDate, -pre);
+    var last = a.endDate ? AZ.addDays(a.endDate, post) : a.startDate;
+    if (today < first || today > last) return null;
+    return { dayNum: AZ.daysBetween(first, today) + 1, totalDays: AZ.daysBetween(first, last) + 1 };
+  }
+
+  function isPastTrip(trip) {
+    var a = A(trip);
+    var end = a.endDate || a.startDate;
+    return end && end < AZ.today();
+  }
+
+  /* ---- Driving cost: fuel by mileage, plus the costs people forget ---- */
+  var IRS_RATE = 0.67; // per-mile all-in figure (fuel + wear + depreciation), editable assumption
+  function driveEstimate(trip) {
+    var a = A(trip);
+    var rt = Number(a.driveMilesRT) || 0;
+    var local = Number(a.driveMilesLocal) || 0;
+    var mpg = Number(a.driveMpg) || 0;
+    var gas = Number(a.driveGasPrice) || 0;
+    if (!rt && !local) return null;
+    var miles = rt + local;
+    var e = { miles: miles, rt: rt, local: local, mpg: mpg, gas: gas };
+    if (mpg > 0 && gas > 0) {
+      e.gallons = miles / mpg;
+      e.fuel = e.gallons * gas;
+    }
+    e.allIn = miles * IRS_RATE; // fuel + tires + maintenance + depreciation
+    e.hours = rt ? (rt / 2) / 62 : 0; // one-way drive time at ~62 mph average
+    return e;
+  }
+  function money(n) {
+    if (n == null || isNaN(n)) return '';
+    return '$' + Math.round(n).toLocaleString('en-US');
   }
 
   /* =======================================================================
@@ -1103,7 +1366,16 @@
 
   function renderHeader() {
     var brand = h('div', 'brand');
-    var mark = h('div', 'brand-mark', 'V');
+    var mark = h('button', 'brand-mark', 'V');
+    mark.type = 'button';
+    mark.setAttribute('aria-label', 'Home');
+    mark.style.cursor = 'pointer';
+    mark.style.background = 'transparent';
+    mark.addEventListener('click', function () {
+      var t = currentTrip();
+      if (app.view === 'intake' && t) { putRecord(t); toast('Saved.'); }
+      go('trips', null);
+    });
     var txt = h('div');
     txt.appendChild(h('h1', null, 'Voyage Concierge'));
     txt.appendChild(h('p', null, 'Ortiz Family Travel Desk'));
@@ -1115,6 +1387,16 @@
       edit.type = 'button';
       edit.addEventListener('click', function () { go('intake', trip.id, 0); });
       brand.appendChild(edit);
+    }
+    if (app.view === 'intake' && trip) {
+      var close = h('button', 'hdr-action', '✕ Close');
+      close.type = 'button';
+      close.addEventListener('click', function () {
+        putRecord(trip);
+        toast(trip.status === 'draft' ? 'Saved as draft — finish any time.' : 'Saved.');
+        go(trip.status === 'draft' ? 'trips' : 'plan', trip.status === 'draft' ? null : trip.id);
+      });
+      brand.appendChild(close);
     }
     elHeader.appendChild(brand);
 
@@ -1196,11 +1478,30 @@
     elMain.appendChild(h('div', 'sec-head', trips.length + (trips.length === 1 ? ' voyage' : ' voyages')));
     trips.forEach(function (trip) {
       var a = A(trip);
-      var tile = h('button', 'trip-tile');
-      tile.type = 'button';
+      var tile = h('div', 'trip-tile');
+      tile.setAttribute('role', 'button');
+      tile.tabIndex = 0;
+      var del = h('button', 'tt-del', '✕');
+      del.type = 'button';
+      del.setAttribute('aria-label', 'Delete trip');
+      del.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showModal({
+          title: trip.status === 'draft' ? 'Delete this draft?' : 'Delete this trip?',
+          message: tripTitle(trip) + ' will be removed from this device.',
+          confirmText: 'Delete', cancelText: 'Keep it', danger: true,
+          onConfirm: function () {
+            liveRecords('msdone').filter(function (r) { return r.tripId === trip.id; }).forEach(function (r) { softDelete(r.id); });
+            softDelete(trip.id);
+            toast('Deleted.');
+            render();
+          }
+        });
+      });
+      tile.appendChild(del);
       var top = h('div', 'tt-top');
       var left = h('div');
-      left.appendChild(h('div', 'tt-name', tripTitle(trip)));
+      left.appendChild(h('div', 'tt-name', (trip.private ? '🔒 ' : '') + tripTitle(trip)));
       var bits = [];
       if (a.tripType) bits.push(labelFor('tripType', a.tripType));
       if (a.startDate && a.endDate) bits.push(AZ.pretty(a.startDate) + ' – ' + AZ.pretty(a.endDate));
@@ -1276,6 +1577,79 @@
     c1.appendChild(row1);
     c1.appendChild(h('div', 'status-line ' + (hasKey() ? 'ok' : 'off'), hasKey() ? '✓ Research features are on' : 'No key — running on the built-in rules only'));
     body.appendChild(c1);
+
+    // Family profile — the master client file, like a travel agent keeps
+    var cp = h('div', 'set-card');
+    cp.appendChild(h('h3', 'serif', 'Memberships & loyalty'));
+    cp.appendChild(h('p', null, 'The master list. Every new trip starts with these; the trip interview only confirms which ones apply. Tier changes here carry everywhere.'));
+    var prof = getProfile();
+    var owned = Object.keys(prof.memberships || {});
+    var mlist = h('div', 'opts');
+    LOYALTY.filter(function (pr) { return owned.indexOf(pr.id) > -1; })
+      .concat(LOYALTY.filter(function (pr) { return owned.indexOf(pr.id) === -1; }))
+      .forEach(function (prog) {
+        var on = owned.indexOf(prog.id) > -1;
+        var b = optionButton({ v: prog.id, ico: prog.ico, label: prog.name, sub: on ? '' : 'Tap to add' }, on);
+        var tierRow = h('div', 'tier-row');
+        var sel = document.createElement('select');
+        prog.tiers.forEach(function (t) { var o = document.createElement('option'); o.textContent = t; o.value = t; sel.appendChild(o); });
+        if (on) sel.value = prof.memberships[prog.id];
+        sel.addEventListener('change', function () {
+          var p = getProfile(); p.memberships[prog.id] = sel.value; putRecord(p);
+          toast('Tier updated everywhere.');
+        });
+        tierRow.appendChild(sel);
+        tierRow.style.display = on ? 'flex' : 'none';
+        b.addEventListener('click', function () {
+          var p = getProfile();
+          if (p.memberships[prog.id]) {
+            delete p.memberships[prog.id];
+            if (p.customNames) delete p.customNames[prog.id];
+            putRecord(p);
+            b.classList.remove('sel'); tierRow.style.display = 'none';
+            toast('Forgotten.');
+          } else {
+            p.memberships[prog.id] = sel.value; putRecord(p);
+            b.classList.add('sel'); tierRow.style.display = 'flex';
+          }
+        });
+        mlist.appendChild(b); mlist.appendChild(tierRow);
+      });
+    // Custom programs already owned
+    owned.filter(function (k) { return k.indexOf('custom_') === 0; }).forEach(function (k) {
+      var b = optionButton({ v: k, ico: '⭐', label: LOYALTY_NAME[k] || k, sub: prof.memberships[k] }, true);
+      b.addEventListener('click', function () {
+        var p = getProfile();
+        delete p.memberships[k];
+        if (p.customNames) delete p.customNames[k];
+        putRecord(p); toast('Forgotten.'); render();
+      });
+      mlist.appendChild(b);
+    });
+    var addCustom = optionButton({ v: 'add', ico: '＋', label: 'Something else', sub: 'Military, corporate rate, timeshare, club…' }, false);
+    addCustom.addEventListener('click', function () {
+      showFormModal({
+        title: 'Add a membership',
+        fields: [
+          { key: 'name', label: 'Program', placeholder: 'e.g. Military / USAA' },
+          { key: 'tier', label: 'Tier or level', placeholder: 'e.g. Member' }
+        ],
+        onSubmit: function (v) {
+          if (!v.name) { toast('Program name is required.', true); return false; }
+          var id = 'custom_' + v.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          var p = getProfile();
+          p.memberships[id] = v.tier || 'Member';
+          p.customNames = p.customNames || {};
+          p.customNames[id] = v.name;
+          putRecord(p);
+          LOYALTY_NAME[id] = v.name;
+          render();
+        }
+      });
+    });
+    mlist.appendChild(addCustom);
+    cp.appendChild(mlist);
+    body.appendChild(cp);
 
     // Data
     var c2 = h('div', 'set-card');
@@ -1366,11 +1740,13 @@
   }
 
   function labelFor(key, val) {
+    var t = currentTrip();
+    var a = t ? A(t) : {};
     for (var i = 0; i < STEPS.length; i++) {
       var parts = STEPS[i].parts || [];
       for (var j = 0; j < parts.length; j++) {
         if (parts[j].key === key && parts[j].options) {
-          var o = parts[j].options.filter(function (x) { return x.v === val; })[0];
+          var o = partOptions(parts[j], a).filter(function (x) { return x.v === val; })[0];
           if (o) return o.label;
         }
       }
@@ -1406,7 +1782,21 @@
       go('plan');
       return;
     }
-    if (app.step === GATE) { go('brief'); return; }
+    if (app.step === GATE) {
+      var t = currentTrip();
+      if (t && !A(t).startDate) {
+        showModal({
+          title: 'No dates yet',
+          message: 'The booking timeline is calculated backwards from your start date, so without dates the plan will be missing its milestones. Add dates now, or build with what we have?',
+          confirmText: 'Add dates', cancelText: 'Build anyway',
+          onConfirm: function () { app.step = 2; render(); window.scrollTo(0, 0); }
+        });
+        var cancelBtn = document.querySelector('.modal-overlay .btn-secondary');
+        if (cancelBtn) cancelBtn.addEventListener('click', function () { go('brief'); });
+        return;
+      }
+      go('brief'); return;
+    }
     if (app.step >= STEPS.length - 1) { go('brief'); return; }
     app.step++;
     render(); window.scrollTo(0, 0);
@@ -1446,8 +1836,9 @@
     var body = h('div', 'q-body');
     elMain.appendChild(body);
 
-    var solo = s.parts.length === 1;
-    s.parts.forEach(function (p, i) {
+    var visible = s.parts.filter(function (p) { return !p.showIf || p.showIf(a); });
+    var solo = visible.length === 1;
+    visible.forEach(function (p, i) {
       if (p.label) body.appendChild(h('div', 'part-label' + (i === 0 ? ' first' : ''), p.label));
       if (p.help) body.appendChild(h('p', 'part-help', p.help));
       renderPart(p, body, solo, trip, a);
@@ -1466,10 +1857,17 @@
     }
   }
 
+  function partOptions(p, a) {
+    var opts = typeof p.options === 'function' ? p.options(a) : p.options;
+    return (opts || []).map(function (o) {
+      return typeof o.sub === 'function' ? { v: o.v, ico: o.ico, label: o.label, sub: o.sub(a) } : o;
+    });
+  }
+
   function renderPart(p, body, solo, trip, a) {
     if (p.type === 'single' || p.type === 'multi') {
       var wrap = h('div', 'opts');
-      p.options.forEach(function (o) {
+      partOptions(p, a).forEach(function (o) {
         var isMulti = p.type === 'multi';
         var cur = a[p.key];
         var sel = isMulti ? (Array.isArray(cur) && cur.indexOf(o.v) > -1) : cur === o.v;
@@ -1488,6 +1886,7 @@
             if (solo) setTimeout(intakeNext, 180);
           }
           touchTrip();
+          if (p.rerender || (p.rerenderOn && p.rerenderOn.indexOf(o.v) > -1)) { putRecord(trip); render(); }
         });
         wrap.appendChild(b);
       });
@@ -1609,6 +2008,75 @@
       body.appendChild(n);
     }
 
+    if (p.type === 'drivedetails') {
+      if (a.driveMpg == null || a.driveMpg === '') a.driveMpg = '24';
+      if (a.driveGasPrice == null || a.driveGasPrice === '') a.driveGasPrice = '3.50';
+      var readout = h('div', 'note');
+
+      function paintReadout() {
+        clear(readout);
+        var e = driveEstimate(trip);
+        if (!e) {
+          readout.appendChild(h('b', null, 'Add your round-trip miles '));
+          readout.appendChild(document.createTextNode('and I will work fuel into the budget and compare driving against flying.'));
+          return;
+        }
+        readout.appendChild(h('b', null, e.miles.toLocaleString('en-US') + ' miles total. '));
+        if (e.fuel != null) {
+          readout.appendChild(document.createTextNode(
+            'Fuel runs about ' + money(e.fuel) + ' (' + Math.round(e.gallons) + ' gallons at $' + Number(e.gas).toFixed(2) + '). '
+          ));
+        }
+        readout.appendChild(document.createTextNode(
+          'Counting tires, maintenance and depreciation, the true cost of those miles is closer to ' + money(e.allIn) + '. ' +
+          (e.hours ? 'Figure about ' + Math.round(e.hours) + ' hours behind the wheel each way.' : '')
+        ));
+      }
+
+      function mileField(label, key, ph) {
+        var l = h('label', 'field');
+        l.appendChild(h('span', 'lbl', label));
+        var i = document.createElement('input');
+        i.type = 'number'; i.placeholder = ph; i.min = '0';
+        i.value = a[key] || '';
+        i.addEventListener('input', function () { a[key] = i.value; paintReadout(); touchTrip(); });
+        l.appendChild(i);
+        return l;
+      }
+
+      var g3 = h('div', 'grid2');
+      g3.appendChild(mileField('Round-trip miles', 'driveMilesRT', 'e.g. 2400'));
+      g3.appendChild(mileField('Miles once there', 'driveMilesLocal', 'e.g. 300'));
+      body.appendChild(g3);
+
+      var g4 = h('div', 'grid2');
+      g4.appendChild(mileField('Your car’s MPG', 'driveMpg', '24'));
+      var lg = h('label', 'field');
+      lg.appendChild(h('span', 'lbl', 'Gas $/gallon'));
+      var gi = document.createElement('input');
+      gi.type = 'number'; gi.step = '0.01'; gi.min = '0'; gi.placeholder = '3.50';
+      gi.value = a.driveGasPrice || '';
+      gi.addEventListener('input', function () { a.driveGasPrice = gi.value; paintReadout(); touchTrip(); });
+      lg.appendChild(gi);
+      g4.appendChild(lg);
+      body.appendChild(g4);
+
+      var multiNote = null;
+      if (a.shape === 'multi' && (a.segments || []).length > 1) {
+        multiNote = h('p', 'part-help');
+        multiNote.textContent = 'You have ' + a.segments.length + ' stops — include the miles between them in "miles once there," since inter-city legs are where driving trips quietly outgrow their fuel budget.';
+        body.appendChild(multiNote);
+      }
+
+      paintReadout();
+      body.appendChild(readout);
+
+      var dn = h('p', 'part-help');
+      dn.style.marginTop = '10px';
+      dn.textContent = 'MPG and gas price are editable assumptions — set them to your actual car and today’s local price for a real number.';
+      body.appendChild(dn);
+    }
+
     if (p.type === 'travelers') {
       var list = h('div', 'opts');
       function paintTravelers() {
@@ -1628,7 +2096,10 @@
             ],
             onSubmit: function (v) {
               if (!v.name) { toast('Name is required.', true); return false; }
-              a.travelers.push(v.age ? v.name + ' (' + v.age + ')' : v.name);
+              var label = v.age ? v.name + ' (' + v.age + ')' : v.name;
+              a.travelers.push(label);
+              var p = getProfile();
+              if ((p.travelers || []).indexOf(label) === -1) { p.travelers.push(label); putRecord(p); }
               paintTravelers(); touchTrip();
             }
           });
@@ -1664,7 +2135,10 @@
     if (p.type === 'memberships') {
       if (!a.memberships) a.memberships = {};
       var mwrap = h('div', 'opts');
-      LOYALTY.forEach(function (prog) {
+      var profOwned = Object.keys(getProfile().memberships || {});
+      LOYALTY.filter(function (pr) { return profOwned.indexOf(pr.id) > -1; })
+        .concat(LOYALTY.filter(function (pr) { return profOwned.indexOf(pr.id) === -1; }))
+        .forEach(function (prog) {
         var on = !!a.memberships[prog.id];
         var b = optionButton({ v: prog.id, ico: prog.ico, label: prog.name, sub: on ? '' : 'Tap to add' }, on);
         var tierRow = h('div', 'tier-row');
@@ -1673,15 +2147,25 @@
           var o = document.createElement('option'); o.textContent = t; o.value = t; sel.appendChild(o);
         });
         if (on) sel.value = a.memberships[prog.id];
-        sel.addEventListener('change', function () { a.memberships[prog.id] = sel.value; touchTrip(); });
+        sel.addEventListener('change', function () {
+          a.memberships[prog.id] = sel.value;
+          var p = getProfile();
+          p.memberships[prog.id] = sel.value;   // tier changes update the family profile
+          putRecord(p);
+          touchTrip();
+        });
         tierRow.appendChild(sel);
         tierRow.style.display = on ? 'flex' : 'none';
         b.addEventListener('click', function () {
           if (a.memberships[prog.id]) {
+            // removing from a trip does NOT remove it from the family profile
             delete a.memberships[prog.id];
             b.classList.remove('sel'); tierRow.style.display = 'none';
           } else {
             a.memberships[prog.id] = sel.value;
+            var p = getProfile();
+            p.memberships[prog.id] = sel.value;  // new memberships are remembered for every future trip
+            putRecord(p);
             b.classList.add('sel'); tierRow.style.display = 'flex';
           }
           touchTrip();
@@ -1701,6 +2185,11 @@
             var id = 'custom_' + v.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
             a.memberships[id] = v.tier || 'Member';
             LOYALTY_NAME[id] = v.name;
+            var p = getProfile();
+            p.memberships[id] = v.tier || 'Member';
+            p.customNames = p.customNames || {};
+            p.customNames[id] = v.name;
+            putRecord(p);
             touchTrip(); render();
           }
         });
@@ -1709,7 +2198,9 @@
       body.appendChild(mwrap);
       var n2 = h('div', 'note');
       n2.appendChild(h('b', null, 'Why this matters: '));
-      n2.appendChild(document.createTextNode('Platinum Castaway Club books onboard activities at 120 days out instead of 90 — that gap is the difference between getting the adults-only table and not.'));
+      n2.appendChild(document.createTextNode(isDisneyTrip(trip)
+        ? 'Platinum Castaway Club books onboard activities at 120 days out instead of 90, and a DVC home resort books four months before everyone else — tiers move dates.'
+        : 'Tiers move dates and money: hotel status can mean free late checkout, airline status boards the family together, and warehouse-club travel desks often beat direct prices.'));
       body.appendChild(n2);
     }
 
@@ -1826,6 +2317,11 @@
       : (a.shape ? ({ single: 'One place', multi: 'Multiple stops', advise: 'Suggest stops for me' })[a.shape] : null);
     briefRow(c2, 'Route', shapeTxt);
     briefRow(c2, 'Getting there', a.transport ? labelFor('transport', a.transport) : null);
+    var dB = driveEstimate(trip);
+    if (dB) {
+      briefRow(c2, 'Miles', dB.miles.toLocaleString('en-US') + ' mi' + (dB.hours ? ' · ~' + Math.round(dB.hours) + 'h each way' : ''));
+      briefRow(c2, 'Drive cost', (dB.fuel != null ? money(dB.fuel) + ' fuel · ' : '') + money(dB.allIn) + ' all-in');
+    }
     briefRow(c2, 'Ground transport', (a.ground || []).map(function (v) { return labelFor('ground', v); }).join(', '));
     briefRow(c2, 'Lodging', a.lodging ? labelFor('lodging', a.lodging) : null);
     briefRow(c2, 'Extra days', a.flanking ? labelFor('flanking', a.flanking) : null);
@@ -1887,17 +2383,109 @@
     Object.keys(a.memberships || {}).forEach(function (k) {
       chips.appendChild(h('span', 'pchip', '★ ' + (LOYALTY_NAME[k] || k).replace(/^Disney |^American |^Southwest /, '') + ' ' + a.memberships[k]));
     });
+    if (a.goal === 'booked') chips.appendChild(h('span', 'pchip ok', '💰 Savings mode'));
     if (!isBooked(trip, 'main')) chips.appendChild(h('span', 'pchip warn', '⚠ Main event not booked'));
     if (isBooked(trip, 'lodging')) chips.appendChild(h('span', 'pchip ok', '✓ Lodging booked'));
-    if (isHoliday(trip)) chips.appendChild(h('span', 'pchip warn', '🦃 Holiday dates'));
+    if (isHoliday(trip)) chips.appendChild(h('span', 'pchip warn', '🎉 Holiday dates'));
+    if (trip.private) chips.appendChild(h('span', 'pchip', '🔒 Private'));
     hero.appendChild(chips);
     elMain.appendChild(hero);
 
+    // ---- Day-of view: while traveling, today comes first ----
+    var phase = tripPhaseToday(trip);
+    if (phase) {
+      elMain.appendChild(h('div', 'sec-head', 'Today · Day ' + phase.dayNum + ' of ' + phase.totalDays));
+      var vaults = liveRecords('msdone').filter(function (r) { return r.tripId === trip.id && (r.conf || r.link || r.cost); });
+      var todayCard = h('div', 'day');
+      todayCard.appendChild(h('div', 'd-date', AZ.weekday(AZ.today())));
+      var itin = buildItinerary(trip);
+      var todayText = '';
+      itin.forEach(function (ph) { ph.days.forEach(function (dd) { if (dd.date === AZ.weekday(AZ.today())) todayText = dd.text; }); });
+      todayCard.appendChild(h('div', 'd-text', todayText || 'Mid-trip — enjoy it. Reservations and confirmations are below, offline.'));
+      elMain.appendChild(todayCard);
+      if (vaults.length) {
+        vaults.forEach(function (v) {
+          var card = h('div', 'day');
+          card.appendChild(h('div', 'd-date', '🔖 Booking reference'));
+          var line = h('div', 'd-text', [v.conf ? 'Conf ' + v.conf : null, v.cost ? '$' + v.cost : null].filter(Boolean).join(' · ') || 'Saved booking');
+          if (v.link) {
+            var la = document.createElement('a');
+            la.href = v.link; la.target = '_blank'; la.rel = 'noopener';
+            la.textContent = ' open'; la.style.color = 'var(--brass-bright)';
+            line.appendChild(la);
+          }
+          card.appendChild(line);
+          elMain.appendChild(card);
+        });
+      }
+    }
+
+    // ---- Post-trip debrief: two minutes, then the app learns ----
+    if (isPastTrip(trip) && !trip.debrief) {
+      elMain.appendChild(h('div', 'sec-head', 'Welcome back'));
+      var db = h('div', 'ai-panel');
+      db.appendChild(h('h4', null, 'Two-minute debrief'));
+      db.appendChild(h('p', null, 'What did it actually cost, and what was worth it? Future trips get advice sharpened by your own history.'));
+      var dbBtn = h('button', 'btn-ai', 'Do the debrief');
+      dbBtn.type = 'button';
+      dbBtn.addEventListener('click', function () {
+        showFormModal({
+          title: 'Trip debrief',
+          confirmText: 'Save',
+          fields: [
+            { key: 'actual', label: 'Actual total spend', placeholder: a.budgetTotal ? 'budget was $' + a.budgetTotal : 'e.g. 5200', type: 'number' },
+            { key: 'best', label: 'Most worth it', placeholder: 'the thing you would do again' },
+            { key: 'skip', label: 'Would skip next time', placeholder: 'the thing that was not worth it' }
+          ],
+          onSubmit: function (v) {
+            trip.debrief = { actual: v.actual, best: v.best, skip: v.skip, at: AZ.today() };
+            putRecord(trip);
+            toast('Noted — future advice just got smarter.');
+            render();
+          }
+        });
+      });
+      db.appendChild(dbBtn);
+      elMain.appendChild(db);
+    }
+
     if (!start) {
       var warn = h('div', 'note');
-      warn.appendChild(h('b', null, 'Add dates to unlock the timeline. '));
-      warn.appendChild(document.createTextNode('Milestones are calculated backwards from your start date.'));
+      warn.appendChild(h('b', null, 'No dates yet, so no timeline — '));
+      warn.appendChild(document.createTextNode('milestones are calculated backwards from your start date. Everything below that does not need dates is already live.'));
       elMain.appendChild(warn);
+      var addDates = h('button', 'btn-ai', '📅 Add dates now');
+      addDates.type = 'button';
+      addDates.style.marginTop = '10px';
+      addDates.addEventListener('click', function () { go('intake', trip.id, 2); });
+      elMain.appendChild(addDates);
+      // Date-independent output still renders
+      var tradesND = buildTradeoffs(trip);
+      if (tradesND.length) {
+        elMain.appendChild(h('div', 'sec-head', 'Spend it or save it'));
+        tradesND.forEach(function (t) {
+          var card = h('div', 'trade');
+          card.appendChild(h('h4', null, t.title));
+          if (t.q) card.appendChild(h('div', 't-q', t.q));
+          var cols = h('div', 't-cols');
+          [['save', t.save, 'Save'], ['up', t.up, 'Upgrade']].forEach(function (pair) {
+            var col = h('div', 't-col' + (t.pick === pair[0] ? ' pick' : ''));
+            col.appendChild(h('div', 't-kind ' + (pair[0] === 'save' ? 'save' : 'comfort'), pair[2]));
+            col.appendChild(h('div', 't-opt', pair[1].opt || ''));
+            if (pair[1].cost) col.appendChild(h('div', 't-cost', pair[1].cost));
+            if (pair[1].why) col.appendChild(h('div', 't-why', pair[1].why));
+            cols.appendChild(col);
+          });
+          card.appendChild(cols);
+          if (t.rec) {
+            var rec = h('div', 't-rec');
+            rec.appendChild(h('b', null, 'My take: '));
+            rec.appendChild(document.createTextNode(t.rec));
+            card.appendChild(rec);
+          }
+          elMain.appendChild(card);
+        });
+      }
       renderPlanActions(trip);
       return;
     }
@@ -2044,6 +2632,22 @@
       if (m.tip) b.appendChild(h('div', 'ms-tip', m.tip));
       (m.tags || []).forEach(function (t) { b.appendChild(h('span', 'ms-tag', t)); });
       row.appendChild(b);
+      // Booking vault: saved confirmation details show under done milestones
+      var vault = data.records[msDoneId(trip.id, m.key)];
+      if (m.done && vault && !vault.deleted && (vault.conf || vault.cost || vault.link)) {
+        var vline = h('div', 'ms-tip');
+        vline.style.color = 'var(--green)';
+        vline.textContent = '🔖 ' + [vault.conf ? 'Conf ' + vault.conf : null, vault.cost ? '$' + vault.cost : null].filter(Boolean).join(' · ');
+        if (vault.link) {
+          var va = document.createElement('a');
+          va.href = vault.link; va.target = '_blank'; va.rel = 'noopener';
+          va.textContent = ' link'; va.style.color = 'var(--brass-bright)';
+          vline.appendChild(va);
+        }
+        b.appendChild(vline);
+      }
+      var btnCol = h('div');
+      btnCol.style.display = 'flex'; btnCol.style.flexDirection = 'column'; btnCol.style.gap = '6px';
       var chk = h('button', 'ms-check', m.done ? '✓' : '○');
       chk.type = 'button';
       chk.setAttribute('aria-label', m.done ? 'Mark not done' : 'Mark done');
@@ -2052,16 +2656,71 @@
         setMsDone(trip.id, m.key, nowDone);
         row.classList.toggle('done', nowDone);
         chk.textContent = nowDone ? '✓' : '○';
+        if (nowDone) {
+          // Offer to capture booking details — fully skippable
+          showFormModal({
+            title: 'Save the booking details?',
+            message: 'Optional — becomes your in-trip reference.',
+            confirmText: 'Save',
+            fields: [
+              { key: 'conf', label: 'Confirmation #', placeholder: 'e.g. ABC123' },
+              { key: 'cost', label: 'Cost (optional)', placeholder: 'e.g. 312', type: 'number' },
+              { key: 'link', label: 'Link (optional)', placeholder: 'https://…' }
+            ],
+            onSubmit: function (v) {
+              if (v.conf || v.cost || v.link) {
+                var rec = data.records[msDoneId(trip.id, m.key)];
+                if (rec) { rec.conf = v.conf; rec.cost = v.cost; rec.link = v.link; putRecord(rec); }
+                toast('Saved to the trip.');
+                render();
+              }
+            }
+          });
+        }
       });
-      row.appendChild(chk);
+      btnCol.appendChild(chk);
+      if (!m.done && m.date) {
+        var cal = h('button', 'ms-check', '📅');
+        cal.type = 'button';
+        cal.setAttribute('aria-label', 'Add to Google Calendar');
+        cal.addEventListener('click', function () {
+          window.open(gcalUrl(m.title, m.date, (m.tip || '') ), '_blank', 'noopener');
+        });
+        btnCol.appendChild(cal);
+      }
+      row.appendChild(btnCol);
       elMain.appendChild(row);
     });
 
     // Advisor notes
     elMain.appendChild(h('div', 'sec-head', 'Advisor notes'));
     var notes = [];
+    if (a.goal === 'booked') {
+      notes.push(['This plan is a savings audit', 'Since the big pieces are booked, every milestone above marked "Savings" is a claw-back: repricing refundable rates, fare-drop credits, cheaper routes into the same activities, and lunch-for-dinner swaps. Booked money is not spent money until the cancellation window closes.']);
+    }
+    // Learn from past trips
+    var pastDebriefs = liveRecords('trip').filter(function (t) { return t.id !== trip.id && t.debrief; });
+    if (pastDebriefs.length) {
+      var lastD = pastDebriefs[pastDebriefs.length - 1];
+      var la2 = A(lastD), dbf = lastD.debrief, bits = [];
+      if (dbf.actual && la2.budgetTotal) {
+        var pct = Math.round((Number(dbf.actual) / Number(la2.budgetTotal) - 1) * 100);
+        bits.push(tripTitle(lastD) + ' came in ' + (pct >= 0 ? pct + '% over' : Math.abs(pct) + '% under') + ' budget ($' + dbf.actual + ' vs $' + la2.budgetTotal + ')' + (pct > 5 ? ' — pad this budget accordingly' : '') + '.');
+      }
+      if (dbf.best) bits.push('You said the most worth it was: ' + dbf.best + '.');
+      if (dbf.skip) bits.push('Not worth repeating: ' + dbf.skip + '.');
+      if (bits.length) notes.push(['From your own history', bits.join(' ')]);
+    }
     if (a.budgetTotal) notes.push(['Budget guardrail', 'Target of $' + a.budgetTotal + (a.budgetMax ? ' with a $' + a.budgetMax + ' ceiling' : '') + '. I flag any recommendation that pushes past it and suggest the cheaper swap.']);
     if ((a.splurge || []).length) notes.push(['Where your money goes', 'You said splurge on ' + a.splurge.map(function (v) { return labelFor('splurge', v).toLowerCase(); }).join(' and ') + '. Everything else gets optimized hard for value.']);
+    var dNote = driveEstimate(trip);
+    if (dNote) {
+      var line = dNote.miles.toLocaleString('en-US') + ' miles' +
+        (dNote.fuel != null ? ' works out to roughly ' + money(dNote.fuel) + ' in gas at $' + Number(dNote.gas).toFixed(2) + ' a gallon and ' + Math.round(dNote.mpg) + ' mpg' : '') +
+        '. Budget ' + money(dNote.allIn) + ' though — that is the all-in figure including tires, maintenance and depreciation, and it is the number that makes a fair comparison against airfare.' +
+        (a.budgetTotal ? ' That is about ' + Math.round(dNote.allIn / Number(a.budgetTotal) * 100) + '% of your stated budget before you have paid for a single night.' : '');
+      notes.push(['What the drive actually costs', line]);
+    }
     if ((a.memberships || {}).costco) notes.push(['Costco angle', 'Costco Travel often prices cruises and packages below direct, and Executive adds a 2% reward on top. Worth a five-minute price check before booking anywhere else.']);
     if ((a.memberships || {}).castaway) notes.push(['Your Castaway tier is the lever', 'Tier decides your booking-window date, and the popular items go in the first hour. Set an alarm for midnight Eastern on that date.']);
     if (isHoliday(trip)) notes.push(['Holiday pricing', 'Holiday weeks price differently from the rest of the year: book earlier than normal, expect no last-minute deals, and shift travel days off the peak days on either side.']);
@@ -2077,8 +2736,82 @@
     renderPlanActions(trip);
   }
 
+  function buildTripAppBrief(trip) {
+    var a = A(trip);
+    var lines = ['Build a family trip app for this vacation (use the vacation-app-builder and family-app-standards skills).', ''];
+    lines.push('Destination: ' + tripTitle(trip));
+    lines.push('Dates: ' + (a.startDate ? AZ.pretty(a.startDate) : '?') + (a.endDate ? ' to ' + AZ.pretty(a.endDate) : ''));
+    lines.push('Travelers: ' + (a.travelers || []).join(', '));
+    lines.push('Trip type: ' + (a.tripType || '') + ' · Pace: ' + (a.pace || 'balanced'));
+    if (a.shape === 'multi' && (a.segments || []).length) {
+      lines.push('Stops: ' + a.segments.map(function (s) { return (s.place || '?') + ' (' + (s.nights || 0) + ' nights)'; }).join(' → '));
+    }
+    var itin = buildItinerary(trip);
+    if (itin.length) {
+      lines.push('', 'Itinerary outline:');
+      itin.forEach(function (ph) {
+        lines.push('- ' + ph.name + ' (' + ph.when + ')');
+        ph.days.forEach(function (dd) { lines.push('  · ' + dd.date + ': ' + dd.text); });
+      });
+    }
+    if ((a.cuts || []).length) {
+      var all = deepCutsFor(a.tripType, trip);
+      lines.push('', 'Traditions we are doing: ' + a.cuts.map(function (id) {
+        var c = all.filter(function (x) { return x.id === id; })[0];
+        return c ? c.name : id;
+      }).join(', '));
+    }
+    var vaults = liveRecords('msdone').filter(function (r) { return r.tripId === trip.id && (r.conf || r.link); });
+    if (vaults.length) {
+      lines.push('', 'Booked (confirmations): ' + vaults.map(function (v) { return v.conf || v.link; }).join(', '));
+    }
+    if (a.interests) lines.push('', 'Family notes: ' + a.interests);
+    ((trip.ai && trip.ai.finds) || []).forEach(function (f, i) {
+      if (i === 0) lines.push('', 'Events during our dates:');
+      lines.push('- ' + (f.date || '') + ' ' + (f.title || '') + (f.meta ? ' (' + f.meta + ')' : ''));
+    });
+    return lines.join('\n');
+  }
+
   function renderPlanActions(trip) {
     elMain.appendChild(h('div', 'sec-head', 'Trip actions'));
+
+    // Private flag — future sync will never upload private trips
+    var priv = h('button', 'btn-ai');
+    priv.type = 'button';
+    priv.style.marginBottom = '10px';
+    priv.textContent = trip.private ? '🔓 Make shareable again' : '🔒 Keep this trip private';
+    priv.addEventListener('click', function () {
+      trip.private = !trip.private;
+      putRecord(trip);
+      toast(trip.private ? 'Private — this trip stays on this device only, even after sync is on.' : 'Shareable again.');
+      render();
+    });
+    elMain.appendChild(priv);
+
+    // Trip-app handoff — brief for the vacation-app-builder pipeline
+    var brief = h('button', 'btn-ai', '✨ Copy the trip-app brief');
+    brief.type = 'button';
+    brief.style.marginBottom = '10px';
+    brief.addEventListener('click', function () {
+      var txt = buildTripAppBrief(trip);
+      function fallbackCopy() {
+        var ta = document.createElement('textarea');
+        ta.value = txt;
+        ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); toast('Brief copied — paste it to Claude to build the trip app.'); }
+        catch (e) { toast('Copy failed on this browser.', true); }
+        ta.remove();
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(function () {
+          toast('Brief copied — paste it to Claude to build the trip app.');
+        }).catch(fallbackCopy);
+      } else fallbackCopy();
+    });
+    elMain.appendChild(brief);
     if (buildFinds(trip).length && hasKey()) {
       var again = h('button', 'btn-ai', 'Research again');
       again.type = 'button';
@@ -2118,10 +2851,19 @@
       lines.push('Stops: ' + a.segments.map(function (s) { return (s.place || '?') + ' for ' + (s.nights || 0) + ' nights'; }).join('; '));
     }
     lines.push('Trip type: ' + (a.tripType || 'unspecified'));
+    if (a.goal === 'booked') lines.push('Planning goal: the trip is mostly BOOKED already — focus on savings: repricing opportunities, cheaper routes into the same experiences, free events, and value swaps. Do not suggest rebooking non-refundable items.');
+    else if (a.goal === 'partial') lines.push('Planning goal: partly booked — fill gaps and optimize cost on what remains.');
     lines.push('Dates: ' + (a.startDate || '?') + ' to ' + (a.endDate || '?'));
     lines.push('Travelers: ' + (a.travelers || []).join(', '));
     if ((a.occasion || []).length) lines.push('Occasion notes: ' + a.occasion.join(', '));
     lines.push('Getting there: ' + (a.transport || 'unspecified') + '; ground options considered: ' + ((a.ground || []).join(', ') || 'none specified'));
+    var dC = driveEstimate(trip);
+    if (dC) {
+      lines.push('Driving their own car: ' + dC.miles + ' total miles (' + dC.rt + ' round trip, ' + dC.local + ' local), ' +
+        (dC.mpg ? dC.mpg + ' mpg' : 'mpg unknown') + (dC.gas ? ' at $' + dC.gas + '/gal' : '') +
+        (dC.fuel != null ? ', roughly $' + Math.round(dC.fuel) + ' in fuel' : '') +
+        '. Factor driving days, rest stops and road-trip-friendly detours into suggestions.');
+    }
     lines.push('Lodging: ' + (a.lodging || 'unspecified'));
     lines.push('Extra days before/after: ' + (a.flanking || 'unspecified') + '; desired flavor: ' + ((a.afterVibe || []).join(', ') || 'unspecified'));
     if (a.budgetTotal) lines.push('Budget: $' + a.budgetTotal + (a.budgetMax ? ' target, $' + a.budgetMax + ' ceiling' : ''));
@@ -2245,6 +2987,13 @@
     var trip = currentTrip();
     if (trip) putRecord(trip);
   });
+
+  // PWA: offline shell + Add to Home screen (feature-detected; no-op on file:// or old browsers)
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* offline mode unavailable; app still works */ });
+    });
+  }
 
   render();
 })();

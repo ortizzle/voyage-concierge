@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Ortiz Touring Concierge — prototype v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1220;
+    --surface: #121c30;
+    --surface-2: #182742;
+    --line: #24344f;
+    --brass: #c9a86a;
+    --brass-bright: #e6c98a;
+    --text: #e8ecf4;
+    --dim: #93a0b8;
+    --faint: #5d6b85;
+    --green: #4fc08d;
+    --amber: #e0a437;
+    --red: #e06565;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+  h1,h2,h3,.serif { font-family: 'Marcellus', serif; font-weight: 400; }
+  button { font-family: 'Inter', sans-serif; }
+
+  header {
+    position: sticky; top: 0; z-index: 40;
+    padding: calc(14px + env(safe-area-inset-top)) 18px 12px;
+    background: linear-gradient(180deg, #0e1830, rgba(11,18,32,.96));
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 38px; height: 38px; border: 1px solid var(--brass); border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand h1 { font-size: 17px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .brand .tag { font-size: 9.5px; color: var(--brass); letter-spacing: 2.6px; text-transform: uppercase; margin-top: 2px; }
+
+  main { padding: 20px 16px 0; max-width: 640px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ===== Front Desk ===== */
+  .greet { margin: 4px 2px 20px; }
+  .greet h2 { font-size: 26px; }
+  .greet .g-sub { font-size: 13.5px; color: var(--dim); margin-top: 7px; line-height: 1.55; }
+  .greet .g-date { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; }
+
+  .speak {
+    background: linear-gradient(135deg, var(--surface-2), var(--surface) 70%);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 17px 16px 15px; margin-bottom: 12px; position: relative; overflow: hidden;
+  }
+  .speak::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+  .speak .s-kind { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: 2.2px; text-transform: uppercase; color: var(--brass); margin-bottom: 10px; }
+  .speak .s-kind .k-trip { margin-left: auto; font-weight: 500; letter-spacing: 1px; color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; }
+  .speak.urgent .s-kind { color: var(--amber); }
+  .speak .s-text { font-family: 'Marcellus', serif; font-size: 18.5px; line-height: 1.45; }
+  .speak .s-sub { font-size: 13px; color: var(--dim); line-height: 1.6; margin-top: 9px; }
+  .speak .s-sub b { color: var(--brass-bright); font-weight: 600; }
+  .speak .s-actions { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; }
+
+  .btn { min-height: 46px; border-radius: 11px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); padding: 0 16px; }
+  .btn-brass { background: linear-gradient(135deg, var(--brass), var(--brass-bright)); color: #1a1408; border: none; flex: 1; }
+  .btn-ghost { background: transparent; color: var(--dim); }
+
+  .consult-cta {
+    width: 100%; text-align: left; cursor: pointer; margin: 20px 0 8px;
+    background: var(--surface); border: 1px dashed rgba(201,168,106,.55); border-radius: var(--radius);
+    padding: 17px 16px; color: var(--text); display: flex; gap: 14px; align-items: flex-start;
+  }
+  .consult-cta .c-ico { font-size: 24px; flex-shrink: 0; padding-top: 2px; }
+  .consult-cta .c-title { display: block; font-family: 'Marcellus', serif; font-size: 18px; }
+  .consult-cta .c-sub { display: block; font-size: 12.5px; color: var(--dim); margin-top: 4px; line-height: 1.55; }
+
+  /* ===== Consult ===== */
+  .dots { display: flex; gap: 7px; margin: 6px 2px 22px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+  .dot.on { background: var(--brass); }
+  .q-eyebrow { font-size: 10.5px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--brass); margin-bottom: 10px; }
+  .q-title { font-family: 'Marcellus', serif; font-size: 25px; line-height: 1.3; }
+  .q-help { font-size: 13.5px; color: var(--dim); margin-top: 9px; line-height: 1.6; }
+  .opts { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+  .opt {
+    display: flex; align-items: center; gap: 13px; width: 100%; text-align: left;
+    min-height: 58px; padding: 13px 16px; border-radius: 12px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line); color: var(--text); font-size: 15px;
+  }
+  .opt .o-ico { font-size: 19px; width: 24px; text-align: center; flex-shrink: 0; }
+  .opt .o-label { font-weight: 600; display: block; }
+  .opt .o-sub { font-size: 12.5px; color: var(--dim); margin-top: 2px; line-height: 1.45; display: block; }
+  .opt.advise { border-style: dashed; border-color: rgba(201,168,106,.55); background: rgba(201,168,106,.06); }
+  .opt.advise .o-label { color: var(--brass-bright); }
+  .opt.sel { border-color: var(--brass); background: rgba(201,168,106,.1); }
+  .leave { background: none; border: none; color: var(--faint); font-size: 13px; cursor: pointer; min-height: 44px; padding: 0 4px; margin-top: 10px; }
+
+  /* plan preview */
+  .plan { background: linear-gradient(135deg, var(--surface-2), var(--surface) 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; margin-top: 20px; position: relative; overflow: hidden; }
+  .plan::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+  .plan h3 { font-size: 20px; }
+  .plan .p-sub { font-size: 13px; color: var(--dim); margin-top: 6px; line-height: 1.55; }
+  .cand { display: flex; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .cand:last-of-type { border-bottom: none; }
+  .cand .c-ico { font-size: 18px; width: 22px; text-align: center; flex-shrink: 0; padding-top: 1px; }
+  .cand .c-name { font-size: 14.5px; font-weight: 600; }
+  .cand .c-why { font-size: 12.5px; color: var(--dim); margin-top: 3px; line-height: 1.5; }
+  .sec-label { font-size: 10.5px; letter-spacing: 2.2px; text-transform: uppercase; color: var(--brass); margin: 18px 0 6px; }
+  .ms { display: flex; gap: 12px; padding: 10px 2px; align-items: flex-start; }
+  .ms .m-date { font-size: 10.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--brass); width: 64px; flex-shrink: 0; padding-top: 3px; line-height: 1.5; }
+  .ms .m-text { font-size: 13.5px; line-height: 1.5; }
+  .guard { margin-top: 14px; padding: 11px 13px; border-radius: 10px; background: rgba(79,192,141,.08); border: 1px solid rgba(79,192,141,.35); font-size: 13px; color: var(--dim); line-height: 1.5; }
+  .guard b { color: var(--green); font-weight: 600; }
+
+  /* ===== Binder ===== */
+  .sec-head { font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--dim); margin: 24px 4px 10px; display: flex; align-items: center; gap: 9px; }
+  .sec-head.first { margin-top: 4px; }
+  .sec-head::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .row { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 13px 15px; margin-bottom: 9px; }
+  .row .r-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .row .r-name { font-family: 'Marcellus', serif; font-size: 16.5px; }
+  .row .r-fig { font-size: 11px; color: var(--faint); letter-spacing: .5px; flex-shrink: 0; }
+  .row .r-sub { font-size: 12.5px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+  .row .r-sub b { color: var(--brass-bright); font-weight: 600; }
+  .row .r-warn { color: var(--red); }
+  .binder-note { font-size: 12px; color: var(--faint); line-height: 1.55; margin: 14px 4px 0; }
+
+  .proto-note { margin: 24px 0 10px; padding: 12px 14px; border-radius: 11px; font-size: 12px; line-height: 1.55; background: rgba(224,164,55,.06); border: 1px dashed rgba(224,164,55,.35); color: var(--dim); }
+
+  /* ===== Nav ===== */
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background: rgba(11,18,32,.97); border-top: 1px solid var(--line); padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); backdrop-filter: blur(8px); }
+  nav.tabs { display: flex; justify-content: space-around; max-width: 640px; margin: 0 auto; }
+  .nav-btn { background: none; border: none; color: var(--faint); font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; min-width: 100px; min-height: 52px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .nav-btn .ico { font-size: 20px; }
+  .nav-btn.active { color: var(--brass-bright); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9a86a" stroke-width="1.5" stroke-linecap="round">
+        <path d="M12 4 v1.5"/><path d="M5 15 a7 7 0 0 1 14 0 Z"/><path d="M3.5 17.5 h17"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Ortiz Touring Concierge</h1>
+      <div class="tag">At your service</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= FRONT DESK ================= -->
+  <section class="view active" id="view-desk">
+    <div class="greet">
+      <div class="g-date">Saturday · July 26</div>
+      <h2>Good evening, Kat.</h2>
+      <div class="g-sub">Three things worth your attention tonight — then I'll leave you be.</div>
+    </div>
+
+    <div id="deskCards">
+    <div class="speak urgent">
+      <div class="s-kind">⏱ Time-sensitive <span class="k-trip">Alaska Cruise</span></div>
+      <div class="s-text">Your Castaway Gold window opens Saturday night. Shall we set your priorities now?</div>
+      <div class="s-sub">Port adventures and Palo go within minutes of <b>midnight Eastern — that's 9pm our time</b>. If we rank your top picks tonight, booking night takes five minutes instead of a scramble.</div>
+      <div class="s-actions">
+        <button class="btn btn-brass">Set priorities — 5 min</button>
+        <button class="btn btn-ghost">Remind me Friday</button>
+      </div>
+    </div>
+
+    <div class="speak">
+      <div class="s-kind">✨ A find for your dates <span class="k-trip">Alaska Cruise</span></div>
+      <div class="s-text">The week you're in Juneau, the Sealaska Heritage celebration is on.</div>
+      <div class="s-sub">Dance, carving, food stalls — very kid-friendly, and it only happens every two years. Your port day overlaps its final afternoon. Shall I pencil it in?</div>
+      <div class="s-actions">
+        <button class="btn btn-brass">Pencil it in</button>
+        <button class="btn btn-ghost">Skip it</button>
+      </div>
+    </div>
+
+    <div class="speak">
+      <div class="s-kind">🪙 Money note <span class="k-trip">Alaska Cruise</span></div>
+      <div class="s-text">Final payment — $2,410 on August 16. You're on plan.</div>
+      <div class="s-sub">Nothing needed from you unless the dates feel shaky — after the 16th the deposit locks in. I'll bring it back to you the week it's due.</div>
+      <div class="s-actions">
+        <button class="btn btn-ghost">Noted</button>
+      </div>
+    </div>
+    </div>
+
+    <button class="consult-cta" id="startConsult">
+      <span class="c-ico">🛎️</span>
+      <span>
+        <span class="c-title">Book a consult — plan something new</span>
+        <span class="c-sub">Bring me a loose idea. "Somewhere warm in February" is a complete answer — that's what I'm for.</span>
+      </span>
+    </button>
+
+    <div class="proto-note">PROTOTYPE v2 — sample data, look &amp; feel only. Tap "Book a consult" to feel the question-led flow. Nothing saves.</div>
+  </section>
+
+  <!-- ================= CONSULT ================= -->
+  <section class="view" id="view-consult">
+    <div class="dots" id="dots"></div>
+    <div id="consultBody"></div>
+    <button class="leave" id="leaveConsult">← Save my spot and step out</button>
+  </section>
+
+  <!-- ================= BINDER ================= -->
+  <section class="view" id="view-binder">
+    <div class="sec-head first">Trips on file</div>
+    <div id="binderTripsList">
+    <div class="row">
+      <div class="r-top"><div class="r-name">Alaska with the Mouse</div><div class="r-fig">NOV 14–21</div></div>
+      <div class="r-sub">Booked and on plan. <b>Next:</b> booking window, Aug 1 — I'll bring it to the front desk.</div>
+    </div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">Flagstaff Getaway</div><div class="r-fig">AUG 7–9</div></div>
+      <div class="r-sub">Twelve days out. When you're ready, I can <b>commission the trip app</b> — the keepsake one for the family.</div>
+    </div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">Japan, Cherry Blossoms</div><div class="r-fig">SPRING '27</div></div>
+      <div class="r-sub">Just an idea for now — no rush, nothing lost by waiting until fall.</div>
+    </div>
+    </div>
+
+    <div class="sec-head">Budget lines</div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">2026 travel</div><div class="r-fig">$6,500 COMMITTED</div></div>
+      <div class="r-sub">Alaska: $3,680 paid of $8,500 budget · Flagstaff: $410 of $900 · everything tracking inside its envelope.</div>
+    </div>
+
+    <div class="sec-head">Family details</div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">Chris</div><div class="r-fig">PASSPORT 2031</div></div>
+      <div class="r-sub">Castaway Gold · Southwest A-List · Costco Exec</div>
+    </div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">Kat</div><div class="r-fig">PASSPORT 2029</div></div>
+      <div class="r-sub">Castaway Gold · Marriott Gold · window seat is the kids', aisle is yours</div>
+    </div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">Sedona, 12</div><div class="r-fig">PASSPORT 2030</div></div>
+      <div class="r-sub">Motion sickness — patches packed for sea days · Edge/Vibe club age band</div>
+    </div>
+    <div class="row">
+      <div class="r-top"><div class="r-name">River, 9</div><div class="r-fig r-warn">PASSPORT SEP 2027 ⚠</div></div>
+      <div class="r-sub">No seafood · 48" — I check ride minimums · <span class="r-warn">renew passport before booking Japan</span></div>
+    </div>
+    <div class="binder-note">Everything here is entered once and used everywhere — ages update themselves, loyalty tiers move booking windows automatically.</div>
+  </section>
+
+</main>
+
+<div class="footer">
+  <nav class="tabs">
+    <button class="nav-btn active" data-view="desk"><span class="ico">🛎️</span>Front Desk</button>
+    <button class="nav-btn" data-view="binder"><span class="ico">📔</span>The Binder</button>
+  </nav>
+</div>
+
+<script>
+(function () {
+  var navBtns = document.querySelectorAll('.nav-btn');
+  function show(view) {
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+    document.getElementById('view-' + view).classList.add('active');
+    navBtns.forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-view') === view); });
+    window.scrollTo(0, 0);
+  }
+  navBtns.forEach(function (b) {
+    b.addEventListener('click', function () { show(b.getAttribute('data-view')); });
+  });
+
+  /* ---- Consult demo flow ----
+     Q0 gate: known destination? Yes -> destination text -> shared Qs -> booking-sequence plan
+                                  No  -> shape -> shared Qs -> candidates plan            */
+  var GATE = {
+    eyebrow: 'The consult · first things first', title: 'Do you already know where you’re going?',
+    help: 'No wrong answer — if it’s decided, we skip straight to organizing it. If not, that’s exactly what I’m for.',
+    opts: [
+      { ico: '📍', label: 'Yes — I know the place', sub: 'Tell me where and we’ll get it organized', known: true },
+      { ico: '💭', label: 'No — help me find it', sub: 'Bring me a loose idea and I’ll bring you candidates' }
+    ]
+  };
+  var DEST_INPUT = {
+    eyebrow: 'The consult · the place', title: 'Where to?',
+    help: 'As specific as you’ve got — a city, a resort, a ship. We’ll fill in the rest.',
+    input: true, placeholder: 'e.g. Puerto Vallarta, or Disney Wonder — Alaska'
+  };
+  var SHAPE = {
+    key: 'shape',
+    eyebrow: 'The consult · getting the shape', title: 'What kind of trip is this reaching for?',
+    help: 'Not the vibe yet — just the shape. A cruise or theme park carries its own booking-window rules, so it helps to know now.',
+    opts: [
+      { ico: '🏜️', label: 'A weekend getaway', sub: 'Short, close, quick-turn planning' },
+      { ico: '🌆', label: 'A city we haven’t done', sub: 'Could be leisure, could be a work trip attached to one' },
+      { ico: '🚢', label: 'A cruise or theme park', sub: 'Booking windows tied to loyalty tier — worth flagging early' },
+      { ico: '🎯', label: 'The big bucket-list swing', sub: 'Worth planning a year out' },
+      { ico: '🤝', label: 'Not sure — that’s what you’re for', sub: 'I’ll bring you three candidates that fit the family right now', advise: true }
+    ]
+  };
+  var WHOS_GOING = {
+    key: 'who',
+    eyebrow: 'The consult · who’s coming', title: 'Who’s coming on this one?',
+    help: 'This changes more than anything else I’ll ask — a romantic weekend and a family trip aren’t the same app.',
+    opts: [
+      { ico: '💑', label: 'Just the two of us', sub: 'Adults-only pace, adults-only dining' },
+      { ico: '👨‍👩‍👧‍👦', label: 'The whole family', sub: 'Sedona and River come too — kid-club ages and ride minimums apply' },
+      { ico: '👴', label: 'Extended family joining', sub: 'Grandparents or cousins — I’ll watch group-size room and reservation limits' },
+      { ico: '🤝', label: 'Not sure yet — advise me', sub: 'I’ll ask again once it matters for a booking', advise: true }
+    ]
+  };
+  var TIMING = {
+    key: 'timing',
+    eyebrow: 'The consult · timing', title: 'When, roughly?',
+    help: 'Exact dates help, but a window is plenty — flexible weeks are where the savings hide.',
+    opts: [
+      { ico: '📆', label: 'I have exact dates', sub: 'Locked to these days' },
+      { ico: '🪟', label: 'A window — you find the week', sub: 'I’ll hunt the cheapest good week inside it' },
+      { ico: '🎒', label: 'School breaks only', sub: 'I’ll work around the district calendar' },
+      { ico: '🤝', label: 'Whenever it’s smartest', sub: 'I’ll tell you when this trip is cheapest and calmest', advise: true }
+    ]
+  };
+  var FEEL = {
+    eyebrow: 'The consult · the feel', title: 'How should it feel?',
+    help: 'So I don’t over-schedule a 9-year-old — or under-plan for Sedona.',
+    opts: [
+      { ico: '⚡', label: 'Pack it in', sub: 'Maximize every day, rest at home' },
+      { ico: '⚖️', label: 'Balanced', sub: 'One or two anchors a day, room to wander' },
+      { ico: '🌊', label: 'Slow and easy', sub: 'Pool time is the point' },
+      { ico: '🤝', label: 'You’ve seen our trips — you pick', sub: 'Balanced has fit this crew before; I’ll start there', advise: true }
+    ]
+  };
+  var BUDGET = {
+    key: 'budget',
+    eyebrow: 'The consult · the guardrail', title: 'And the budget?',
+    help: 'A ballpark sets the guardrail — it’s how I know when a price is actually a deal.',
+    opts: [
+      { ico: '💵', label: 'Around $2,500', sub: 'Long-weekend scale' },
+      { ico: '💰', label: 'Around $5,000', sub: 'A real week away' },
+      { ico: '🏦', label: '$10,000 and up', sub: 'The big-swing envelope' },
+      { ico: '🤝', label: 'Tell me what this costs', sub: 'I’ll show you what this trip runs for a family of four', advise: true }
+    ]
+  };
+
+  var flow = [];          // built once the gate is answered
+  var step = -1;
+  var known = null;       // true = destination already known
+  var picked = {};        // answers captured as the consult proceeds
+  var dots = document.getElementById('dots');
+  var body = document.getElementById('consultBody');
+
+  function paintDots(total) {
+    while (dots.firstChild) dots.removeChild(dots.firstChild);
+    for (var i = 0; i < total; i++) {
+      var d = document.createElement('span');
+      d.className = 'dot' + (i <= step ? ' on' : '');
+      dots.appendChild(d);
+    }
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text) n.textContent = text;
+    return n;
+  }
+
+  function advance() { step++; paintStep(); window.scrollTo(0, 0); }
+
+  function paintStep() {
+    while (body.firstChild) body.removeChild(body.firstChild);
+
+    if (step === 0) { paintDots(1 + (known === null ? 6 : known ? 6 : 7)); paintQuestion(GATE, handleGateAnswer); return; }
+
+    var s = flow[step - 1];
+    if (!s) { paintDots(flow.length + 1); paintPlan(); return; }
+    paintDots(flow.length + 1);
+    if (s.input) { paintInput(s); return; }
+    paintQuestion(s, function (o) { if (s.key) picked[s.key] = o.label; advance(); });
+  }
+
+  function paintQuestion(s, onPick) {
+    body.appendChild(el('div', 'q-eyebrow', s.eyebrow));
+    body.appendChild(el('div', 'q-title serif', s.title));
+    body.appendChild(el('div', 'q-help', s.help));
+    var wrap = el('div', 'opts');
+    s.opts.forEach(function (o) {
+      var b = el('button', 'opt' + (o.advise ? ' advise' : ''));
+      b.appendChild(el('span', 'o-ico', o.ico));
+      var m = el('span');
+      m.appendChild(el('span', 'o-label', o.label));
+      m.appendChild(el('span', 'o-sub', o.sub));
+      b.appendChild(m);
+      b.addEventListener('click', function () {
+        b.classList.add('sel');
+        setTimeout(function () { onPick(o); }, 220);
+      });
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+  }
+
+  function paintInput(s) {
+    body.appendChild(el('div', 'q-eyebrow', s.eyebrow));
+    body.appendChild(el('div', 'q-title serif', s.title));
+    body.appendChild(el('div', 'q-help', s.help));
+    var wrap = el('div', 'opts');
+    var input = document.createElement('input');
+    input.type = 'text'; input.placeholder = s.placeholder;
+    input.style.cssText = 'width:100%;min-height:52px;padding:13px 15px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--text);font-size:16px;font-family:Inter,sans-serif;margin-top:6px;';
+    wrap.appendChild(input);
+    var go = el('button', 'btn btn-brass', 'Continue');
+    go.style.cssText = 'width:100%;min-height:50px;margin-top:14px;';
+    go.addEventListener('click', function () {
+      picked.destination = input.value.trim() || 'the place you have in mind';
+      advance();
+    });
+    wrap.appendChild(go);
+    body.appendChild(wrap);
+    input.focus();
+  }
+
+  function handleGateAnswer(o) {
+    known = !!o.known;
+    flow = known
+      ? [DEST_INPUT, WHOS_GOING, TIMING, FEEL, BUDGET]
+      : [SHAPE, WHOS_GOING, TIMING, FEEL, BUDGET];
+    advance();
+  }
+
+  function paintPlan() {
+    if (known) { paintKnownPlan(); } else { paintIdeaPlan(); }
+  }
+
+  function paintIdeaPlan() {
+    body.appendChild(el('div', 'q-eyebrow', 'The consult · your plan'));
+    body.appendChild(el('div', 'q-title serif', 'Here’s where we landed.'));
+    body.appendChild(el('div', 'q-help', 'A city or getaway, whole family, balanced pace, about $5,000. Three candidates fit — you don’t have to choose today.'));
+
+    var plan = el('div', 'plan');
+    [
+      ['✈️', 'Puerto Vallarta', 'Direct from Phoenix, real beach town beyond the resort. Fits the guardrail with room for the fun part.'],
+      ['🚗', 'San Diego, done slowly', 'The drive you know, but oceanfront this time — cheapest of the three by far.'],
+      ['🚢', 'Cozumel, by ship', 'Uses your Castaway rate — port days plus kids’ clubs let the grown-ups get an afternoon.']
+    ].forEach(function (c) {
+      var row = el('div', 'cand');
+      row.appendChild(el('span', 'c-ico', c[0]));
+      var m = el('div');
+      m.appendChild(el('div', 'c-name', c[1]));
+      m.appendChild(el('div', 'c-why', c[2]));
+      row.appendChild(m);
+      plan.appendChild(row);
+    });
+
+    plan.appendChild(el('div', 'sec-label', 'What happens next'));
+    [
+      ['This week', 'I price all three against your dates and bring you the numbers.'],
+      ['Nov 30', 'Decision point — pick one. Nothing is lost before this date.'],
+      ['After that', 'Every booking gets a date, and I bring each one to you when it’s time.']
+    ].forEach(function (m) {
+      var row = el('div', 'ms');
+      row.appendChild(el('div', 'm-date', m[0]));
+      row.appendChild(el('div', 'm-text', m[1]));
+      plan.appendChild(row);
+    });
+
+    var g = el('div', 'guard');
+    g.appendChild(el('b', null, 'Why these three: '));
+    g.appendChild(document.createTextNode('all fit the $5,000 guardrail, and Cozumel specifically uses your Castaway Gold rate — that tier is why it’s on the list at all. I’ll flag anything that threatens the guardrail before you commit.'));
+    plan.appendChild(g);
+    body.appendChild(plan);
+    appendFileButton();
+  }
+
+  function paintKnownPlan() {
+    body.appendChild(el('div', 'q-eyebrow', 'The consult · your plan'));
+    body.appendChild(el('div', 'q-title serif', 'Here’s the sequence.'));
+    body.appendChild(el('div', 'q-help', 'The destination’s decided — so instead of candidates, here’s what to lock in and when, in order.'));
+
+    var plan = el('div', 'plan');
+    plan.appendChild(el('div', 'sec-label', 'Priority order'));
+    [
+      ['🎫', 'The core reservation first', 'Everything else — flights, dining, excursions — prices and books around this date. Lock it before anything else moves.'],
+      ['🏨', 'Lodging next', 'Rates on the good rooms move first; the flight can flex by a day or two if it saves real money.'],
+      ['✈️', 'Flights last', 'The one piece with the widest fare swing — worth waiting for the sweet spot once the anchor date is fixed.']
+    ].forEach(function (c) {
+      var row = el('div', 'cand');
+      row.appendChild(el('span', 'c-ico', c[0]));
+      var m = el('div');
+      m.appendChild(el('div', 'c-name', c[1]));
+      m.appendChild(el('div', 'c-why', c[2]));
+      row.appendChild(m);
+      plan.appendChild(row);
+    });
+
+    plan.appendChild(el('div', 'sec-label', 'On your timeline'));
+    [
+      ['Now', 'I start watching fares and rates for your dates.'],
+      ['105 days out', 'Your Castaway Gold booking window opens — a full month ahead of standard guests.'],
+      ['Final payment', 'I’ll bring the exact date and amount to the front desk when it’s set.']
+    ].forEach(function (m) {
+      var row = el('div', 'ms');
+      row.appendChild(el('div', 'm-date', m[0]));
+      row.appendChild(el('div', 'm-text', m[1]));
+      plan.appendChild(row);
+    });
+
+    var g = el('div', 'guard');
+    g.appendChild(el('b', null, 'Why this order: '));
+    g.appendChild(document.createTextNode('your Castaway Gold tier moves the booking window a month earlier than standard — that’s worth building the whole sequence around. The guardrail you gave me has room for all of it; I’ll say so the moment that changes.'));
+    plan.appendChild(g);
+    body.appendChild(plan);
+    appendFileButton();
+  }
+
+  function appendFileButton() {
+    var done = el('button', 'btn btn-brass', 'File it in the binder');
+    done.style.width = '100%'; done.style.marginTop = '16px'; done.style.minHeight = '52px';
+    done.addEventListener('click', function () { fileTrip(); showDesk(); });
+    body.appendChild(done);
+  }
+
+  /* This is the "then what happens" loop: filing doesn't end the consult, it
+     seeds a live trip record (Binder) and the first follow-up card (Front Desk) —
+     the same mechanism that already produces the Alaska cruise reminders. */
+  function fileTrip() {
+    var name = known ? (picked.destination || 'New trip') : 'New trip — narrowing it down';
+
+    var tripsList = document.getElementById('binderTripsList');
+    var row = el('div', 'row');
+    var top = el('div', 'r-top');
+    top.appendChild(el('div', 'r-name', name));
+    top.appendChild(el('div', 'r-fig', 'FILED TODAY'));
+    row.appendChild(top);
+    var sub = el('div', 'r-sub', known
+      ? ('Priority order set for ' + (picked.who || 'your party').toLowerCase() + '. ' + (picked.timing || 'Timing noted') + '. Next update — fares and rates — lands on the front desk this week.')
+      : ('Reaching for ' + (picked.shape || 'something new').toLowerCase() + ', ' + (picked.who || 'party TBD').toLowerCase() + '. Three candidates priced against your guardrail — I’ll bring the pick back here before anything books.'));
+    row.appendChild(sub);
+    tripsList.insertBefore(row, tripsList.firstChild);
+
+    var deskCards = document.getElementById('deskCards');
+    var card = el('div', 'speak');
+    var kind = el('div', 's-kind', '📔 Just filed');
+    kind.appendChild(el('span', 'k-trip', name));
+    card.appendChild(kind);
+    card.appendChild(el('div', 's-text', known
+      ? (name + ' is on the books.')
+      : ('Narrowing down ' + (picked.shape || 'your next trip').toLowerCase() + '.')));
+    card.appendChild(el('div', 's-sub', known
+      ? 'I’ll price it against your dates and have real numbers within the week — you’ll see it here the moment there’s something to decide.'
+      : 'Three candidates are priced against your guardrail. I’ll bring you the pick before anything books — check the Binder any time.'));
+    var actions = el('div', 's-actions');
+    var seeBtn = el('button', 'btn btn-ghost', 'See it in the Binder');
+    seeBtn.addEventListener('click', function () {
+      document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+      document.getElementById('view-binder').classList.add('active');
+      navBtns.forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-view') === 'binder'); });
+      window.scrollTo(0, 0);
+    });
+    actions.appendChild(seeBtn);
+    card.appendChild(actions);
+    deskCards.insertBefore(card, deskCards.firstChild);
+  }
+
+  function showDesk() {
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+    document.getElementById('view-desk').classList.add('active');
+    navBtns.forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-view') === 'desk'); });
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById('startConsult').addEventListener('click', function () {
+    step = 0; known = null; flow = []; picked = {};
+    document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+    document.getElementById('view-consult').classList.add('active');
+    navBtns.forEach(function (x) { x.classList.remove('active'); });
+    paintStep();
+    window.scrollTo(0, 0);
+  });
+  document.getElementById('leaveConsult').addEventListener('click', showDesk);
+})();
+</script>
+</body>
+</html>

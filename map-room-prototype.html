@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1412">
+<title>The Map Room — prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f1412;
+    --paper: #161f1a;
+    --paper-2: #1c2721;
+    --line: #2a382f;
+    --line-soft: #223028;
+    --brass: #c8a35e;
+    --brass-bright: #e9cb8b;
+    --coral: #e0705f;
+    --amber: #dfa63f;
+    --moss: #72bd91;
+    --text: #ece7da;
+    --dim: #9dab9e;
+    --faint: #66756a;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--ink); color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh; overflow-x: hidden;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+  }
+  h1,h2,h3,h4,.serif { font-family: 'Fraunces', serif; font-weight: 500; }
+  button { font-family: 'Inter', sans-serif; }
+
+  /* faint contour lines behind everything */
+  .contours { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .05; }
+
+  header {
+    position: sticky; top: 0; z-index: 40;
+    padding: calc(14px + env(safe-area-inset-top)) 18px 12px;
+    background: linear-gradient(180deg, rgba(15,20,18,.98), rgba(15,20,18,.92));
+    border-bottom: 1px solid var(--line-soft);
+    backdrop-filter: blur(8px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { flex-shrink: 0; }
+  .brand h1 { font-size: 19px; letter-spacing: .5px; }
+  .brand .tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: 2.2px; text-transform: uppercase; color: var(--brass); margin-top: 2px; }
+  .hdr-date { margin-left: auto; text-align: right; font-family: var(--mono); font-size: 10.5px; color: var(--dim); line-height: 1.5; }
+  .hdr-date b { color: var(--brass-bright); font-weight: 500; }
+
+  main { position: relative; z-index: 1; padding: 18px 16px 0; max-width: 640px; margin: 0 auto; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 2.4px; text-transform: uppercase; color: var(--brass); display: flex; align-items: center; gap: 10px; margin: 22px 2px 10px; }
+  .eyebrow.first { margin-top: 2px; }
+  .eyebrow::after { content: ''; flex: 1; height: 1px; background: var(--line-soft); }
+
+  /* ===== Desk: attention items ===== */
+  .att { display: flex; gap: 13px; background: var(--paper); border: 1px solid var(--line); border-left: 3px solid var(--faint); border-radius: 12px; padding: 14px 15px; margin-bottom: 9px; }
+  .att.urgent { border-left-color: var(--coral); background: linear-gradient(90deg, rgba(224,112,95,.08), var(--paper) 55%); }
+  .att.soon { border-left-color: var(--amber); }
+  .att.advise { border-left-color: var(--brass); }
+  .att .a-ico { font-size: 19px; width: 24px; text-align: center; flex-shrink: 0; padding-top: 1px; }
+  .att .a-title { font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+  .att .a-sub { font-size: 12.5px; color: var(--dim); line-height: 1.5; margin-top: 4px; }
+  .att .a-sub b { color: var(--brass-bright); font-weight: 600; }
+  .att .a-when { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; margin-top: 7px; color: var(--faint); }
+  .att.urgent .a-when { color: var(--coral); }
+  .att.soon .a-when { color: var(--amber); }
+  .att .a-trip { display: inline-block; font-family: var(--mono); font-size: 10px; color: var(--dim); border: 1px solid var(--line); border-radius: 5px; padding: 2px 7px; margin-left: 8px; letter-spacing: .5px; }
+
+  /* smart question card */
+  .qcard { background: linear-gradient(150deg, var(--paper-2), var(--paper) 70%); border: 1px solid rgba(200,163,94,.4); border-radius: var(--radius); padding: 17px 16px; position: relative; overflow: hidden; }
+  .qcard::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); }
+  .qcard .q-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2.2px; text-transform: uppercase; color: var(--brass); margin-bottom: 9px; }
+  .qcard .q-text { font-family: 'Fraunces', serif; font-size: 18.5px; line-height: 1.4; }
+  .qcard .q-why { font-size: 12.5px; color: var(--dim); line-height: 1.55; margin-top: 9px; }
+  .qcard .q-why b { color: var(--brass-bright); font-weight: 600; }
+  .qcard .q-actions { display: flex; gap: 9px; margin-top: 14px; }
+  .btn { min-height: 46px; border-radius: 11px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); }
+  .btn-brass { flex: 1; background: linear-gradient(135deg, var(--brass), var(--brass-bright)); color: #201808; border: none; }
+  .btn-ghost { background: transparent; color: var(--dim); padding: 0 18px; }
+
+  /* year money strip */
+  .strip { display: flex; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .strip .cell { flex: 1; padding: 13px 8px 12px; text-align: center; border-right: 1px solid var(--line-soft); }
+  .strip .cell:last-child { border-right: none; }
+  .strip .num { font-family: 'Fraunces', serif; font-size: 19px; color: var(--brass-bright); }
+  .strip .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--dim); margin-top: 4px; }
+
+  /* ===== Trips pipeline ===== */
+  .stage-chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  .stage-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+  .stage-chip.dreaming { color: #a8b4e0; border-color: rgba(168,180,224,.35); } .stage-chip.dreaming .dot { background: #a8b4e0; }
+  .stage-chip.booking { color: var(--amber); border-color: rgba(223,166,63,.4); } .stage-chip.booking .dot { background: var(--amber); }
+  .stage-chip.countdown { color: var(--moss); border-color: rgba(114,189,145,.4); } .stage-chip.countdown .dot { background: var(--moss); }
+  .stage-chip.remembered { color: var(--faint); } .stage-chip.remembered .dot { background: var(--faint); }
+
+  .trip { display: block; width: 100%; text-align: left; font-family: 'Inter', sans-serif; color: var(--text); cursor: pointer; background: linear-gradient(135deg, var(--paper-2), var(--paper) 70%); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 11px; position: relative; overflow: hidden; }
+  .trip::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brass), transparent); opacity: .7; }
+  .trip.past { opacity: .62; }
+  .t-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .t-name { font-family: 'Fraunces', serif; font-size: 20px; line-height: 1.2; }
+  .t-dates { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 5px; letter-spacing: .4px; }
+  .t-next { margin-top: 12px; padding: 10px 12px; border-radius: 9px; background: rgba(200,163,94,.07); border: 1px solid rgba(200,163,94,.25); font-size: 12.5px; color: var(--dim); line-height: 1.5; }
+  .t-next b { color: var(--brass-bright); font-weight: 600; }
+  .t-bar { margin-top: 12px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--line-soft); overflow: hidden; display: flex; }
+  .bar .paid { background: var(--moss); height: 100%; }
+  .bar .committed { background: var(--brass); height: 100%; }
+  .bar-meta { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9.5px; letter-spacing: .8px; text-transform: uppercase; color: var(--faint); margin-top: 6px; }
+  .handoff { display: flex; align-items: flex-start; gap: 12px; width: 100%; margin-top: 12px; min-height: 50px; padding: 12px 14px; border-radius: 11px; cursor: pointer; background: rgba(114,189,145,.09); border: 1px solid rgba(114,189,145,.45); color: var(--moss); font-size: 14px; font-weight: 600; text-align: left; }
+  .handoff .h-ico { font-size: 18px; flex-shrink: 0; padding-top: 1px; }
+  .handoff .h-sub { display: block; font-size: 11.5px; font-weight: 400; color: var(--dim); margin-top: 3px; line-height: 1.45; }
+
+  .cta-row { margin: 18px 0 6px; }
+  .btn-cta { width: 100%; min-height: 54px; border-radius: 13px; font-size: 15.5px; font-weight: 600; background: linear-gradient(135deg, var(--brass), var(--brass-bright)); color: #201808; border: none; cursor: pointer; }
+
+  /* ===== Ledger ===== */
+  .env { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px; margin-bottom: 10px; }
+  .env-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .env-name { font-family: 'Fraunces', serif; font-size: 16.5px; }
+  .env-fig { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+  .env-fig b { color: var(--brass-bright); font-weight: 500; }
+  .env .bar { margin-top: 11px; }
+  .legend { display: flex; gap: 16px; margin: 4px 2px 14px; font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--dim); }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+  .pay { display: flex; gap: 12px; align-items: flex-start; padding: 12px 2px; border-bottom: 1px solid var(--line-soft); }
+  .pay:last-child { border-bottom: none; }
+  .pay-date { font-family: var(--mono); font-size: 10.5px; color: var(--brass); width: 64px; flex-shrink: 0; padding-top: 2px; line-height: 1.5; }
+  .pay-title { font-size: 14px; font-weight: 600; }
+  .pay-sub { font-size: 12px; color: var(--dim); margin-top: 3px; line-height: 1.45; }
+  .pay-amt { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--brass-bright); flex-shrink: 0; }
+
+  /* ===== Crew ===== */
+  .person { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px; margin-bottom: 10px; }
+  .p-top { display: flex; align-items: baseline; gap: 9px; }
+  .p-name { font-family: 'Fraunces', serif; font-size: 17px; }
+  .p-age { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .p-pass { font-family: var(--mono); font-size: 10.5px; margin-left: auto; color: var(--faint); }
+  .p-pass.warn { color: var(--coral); }
+  .p-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .chip { font-size: 11.5px; padding: 4px 10px; border-radius: 999px; background: rgba(200,163,94,.1); border: 1px solid rgba(200,163,94,.3); color: var(--brass-bright); }
+  .chip.note { background: rgba(157,171,158,.08); border-color: var(--line); color: var(--dim); }
+
+  /* ===== Nav ===== */
+  .footer { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; background: rgba(15,20,18,.97); border-top: 1px solid var(--line-soft); padding: 6px 10px calc(6px + env(safe-area-inset-bottom)); backdrop-filter: blur(8px); }
+  nav.tabs { display: flex; justify-content: space-around; max-width: 640px; margin: 0 auto; }
+  .nav-btn { background: none; border: none; color: var(--faint); font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; min-width: 76px; min-height: 52px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+  .nav-btn .ico { font-size: 20px; }
+  .nav-btn.active { color: var(--brass-bright); }
+
+  .proto-note { margin: 26px 0 10px; padding: 12px 14px; border-radius: 11px; font-size: 12px; line-height: 1.55; background: rgba(223,166,63,.06); border: 1px dashed rgba(223,166,63,.35); color: var(--dim); font-family: var(--mono); }
+</style>
+</head>
+<body>
+
+<svg class="contours" width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#c8a35e" stroke-width="1">
+    <path d="M-20,120 C80,60 180,180 300,110 S 460,160 480,120"/>
+    <path d="M-20,160 C80,100 190,220 300,150 S 460,200 480,160"/>
+    <path d="M-20,200 C90,150 200,260 310,195 S 460,240 480,205"/>
+    <path d="M-20,420 C60,380 150,500 260,430 S 420,470 480,430"/>
+    <path d="M-20,460 C70,420 160,540 270,470 S 420,510 480,470"/>
+    <path d="M-20,660 C90,610 190,720 300,650 S 460,700 480,660"/>
+    <path d="M-20,700 C90,650 200,760 310,690 S 460,740 480,700"/>
+  </g>
+</svg>
+
+<header>
+  <div class="brand">
+    <svg width="38" height="38" viewBox="0 0 38 38">
+      <circle cx="19" cy="19" r="17.5" fill="none" stroke="#c8a35e" stroke-width="1.2"/>
+      <circle cx="19" cy="19" r="13" fill="none" stroke="#c8a35e" stroke-width=".5" opacity=".5"/>
+      <path d="M19 5 L21.4 16.6 L33 19 L21.4 21.4 L19 33 L16.6 21.4 L5 19 L16.6 16.6 Z" fill="#e9cb8b"/>
+      <circle cx="19" cy="19" r="2" fill="#0f1412"/>
+    </svg>
+    <div>
+      <h1>The Map Room</h1>
+      <div class="tag">Ortiz Family Travel Desk</div>
+    </div>
+    <div class="hdr-date">SAT · JUL 26 2026<br><b>3 trips on the board</b></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= DESK ================= -->
+  <section class="view active" id="view-desk">
+
+    <div class="eyebrow first">On the desk today</div>
+
+    <div class="att urgent">
+      <div class="a-ico">⏱️</div>
+      <div>
+        <div class="a-title">Castaway Gold booking window opens Saturday <span class="a-trip">Alaska Cruise</span></div>
+        <div class="a-sub">Port adventures, adults-only dining, and nursery slots open at <b>midnight Eastern, Aug 1</b> — the good ones go in minutes. Your priorities list is ready to review so booking night takes five minutes.</div>
+        <div class="a-when">6 days · review priorities</div>
+      </div>
+    </div>
+
+    <div class="att soon">
+      <div class="a-ico">💳</div>
+      <div>
+        <div class="a-title">Final payment due — $2,410 <span class="a-trip">Alaska Cruise</span></div>
+        <div class="a-sub">Due <b>Aug 16</b>. After this date the deposit is non-refundable — if anything about the dates is shaky, this is the last cheap moment to say so.</div>
+        <div class="a-when">21 days</div>
+      </div>
+    </div>
+
+    <div class="att advise">
+      <div class="a-ico">🛂</div>
+      <div>
+        <div class="a-title">Renew River's passport before booking Japan <span class="a-trip">Japan · Spring</span></div>
+        <div class="a-sub">Expires <b>Sep 2027</b> — inside the six-months-validity rule for a March return. Routine renewal is running 6–8 weeks; do it now and it never becomes a problem.</div>
+        <div class="a-when">Advisor note</div>
+      </div>
+    </div>
+
+    <div class="eyebrow">A question worth answering early</div>
+    <div class="qcard">
+      <div class="q-label">Japan · Dreaming</div>
+      <div class="q-text">Is Japan the big swing for spring break — or the fallback if the cruise eats the budget?</div>
+      <div class="q-why">No wrong answer, but it changes what I watch. If it's the big swing, award-seat calendars for late March open in <b>about 5 weeks</b> and I'll start tracking fares now. If it's the fallback, we revisit after the cruise is paid off and nothing is lost.</div>
+      <div class="q-actions">
+        <button class="btn btn-brass">Answer now</button>
+        <button class="btn btn-ghost">Ask me later</button>
+      </div>
+    </div>
+
+    <div class="eyebrow">2026 travel, at a glance</div>
+    <div class="strip">
+      <div class="cell"><div class="num">$9.4k</div><div class="lbl">Budgeted</div></div>
+      <div class="cell"><div class="num">$6.5k</div><div class="lbl">Committed</div></div>
+      <div class="cell"><div class="num">$4.1k</div><div class="lbl">Paid</div></div>
+      <div class="cell"><div class="num">3</div><div class="lbl">Trips</div></div>
+    </div>
+
+    <div class="proto-note">PROTOTYPE — sample data, look &amp; feel only. Tabs below work; nothing saves.</div>
+  </section>
+
+  <!-- ================= TRIPS ================= -->
+  <section class="view" id="view-trips">
+    <div class="eyebrow first">Underway &amp; upcoming</div>
+
+    <div class="trip">
+      <div class="t-top">
+        <div>
+          <div class="t-name">Flagstaff Getaway</div>
+          <div class="t-dates">AUG 7 – 9 · 12 DAYS OUT · CABIN BOOKED</div>
+        </div>
+        <span class="stage-chip countdown"><span class="dot"></span>Countdown</span>
+      </div>
+      <div class="t-next"><b>Next:</b> book the one nice dinner — three weeks out has passed, but Friday tables in Flagstaff usually hold until Tuesday.</div>
+      <button class="handoff"><span class="h-ico">🗺️</span>
+        <span>Commission the trip app
+        <span class="h-sub">Generates the research brief — dates, crew, bookings, interests — and hands it to the trip-app builder.</span></span>
+      </button>
+    </div>
+
+    <button class="trip">
+      <div class="t-top">
+        <div>
+          <div class="t-name">Alaska with the Mouse</div>
+          <div class="t-dates">NOV 14 – 21 · DISNEY WONDER · GOLD TIER</div>
+        </div>
+        <span class="stage-chip booking"><span class="dot"></span>Booking</span>
+      </div>
+      <div class="t-next"><b>Next:</b> booking window opens Aug 1 — 6 days. Then final payment Aug 16.</div>
+      <div class="t-bar">
+        <div class="bar"><div class="paid" style="width:43%"></div><div class="committed" style="width:28%"></div></div>
+        <div class="bar-meta"><span>$3,680 paid · $6,090 committed</span><span>of $8,500</span></div>
+      </div>
+    </button>
+
+    <button class="trip">
+      <div class="t-top">
+        <div>
+          <div class="t-name">Japan, Cherry Blossoms</div>
+          <div class="t-dates">MAR 2027 · WINDOW OPEN · NOTHING BOOKED</div>
+        </div>
+        <span class="stage-chip dreaming"><span class="dot"></span>Dreaming</span>
+      </div>
+      <div class="t-next"><b>Open question:</b> big swing or fallback? Answer on the Desk — it decides whether I start watching fares.</div>
+    </button>
+
+    <div class="cta-row"><button class="btn-cta">＋ Put a new trip on the board</button></div>
+
+    <div class="eyebrow">Remembered</div>
+    <button class="trip past">
+      <div class="t-top">
+        <div>
+          <div class="t-name">San Diego &amp; the Zoo</div>
+          <div class="t-dates">JUN 2026 · CAME IN $240 UNDER BUDGET</div>
+        </div>
+        <span class="stage-chip remembered"><span class="dot"></span>Remembered</span>
+      </div>
+      <div class="t-next">Kept for the record: beach day beat the second zoo day; River's pick (tide pools) was the winner. Feeds next summer's advice.</div>
+    </button>
+  </section>
+
+  <!-- ================= LEDGER ================= -->
+  <section class="view" id="view-ledger">
+    <div class="eyebrow first">Envelopes</div>
+    <div class="legend"><span><i style="background:var(--moss)"></i>Paid</span><span><i style="background:var(--brass)"></i>Committed</span><span><i style="background:var(--line-soft)"></i>Budget</span></div>
+
+    <div class="env">
+      <div class="env-top"><div class="env-name">Alaska with the Mouse</div><div class="env-fig"><b>$3,680</b> / 8,500</div></div>
+      <div class="bar"><div class="paid" style="width:43%"></div><div class="committed" style="width:28%"></div></div>
+    </div>
+    <div class="env">
+      <div class="env-top"><div class="env-name">Flagstaff Getaway</div><div class="env-fig"><b>$410</b> / 900</div></div>
+      <div class="bar"><div class="paid" style="width:46%"></div></div>
+    </div>
+    <div class="env">
+      <div class="env-top"><div class="env-name">Japan, Cherry Blossoms</div><div class="env-fig"><b>$0</b> / 12,000 earmarked</div></div>
+      <div class="bar"></div>
+    </div>
+
+    <div class="eyebrow">Money calendar</div>
+    <div class="pay">
+      <div class="pay-date">AUG 16</div>
+      <div><div class="pay-title">Cruise final payment</div><div class="pay-sub">Last refundable moment. Card with travel protection: Sapphire.</div></div>
+      <div class="pay-amt">$2,410</div>
+    </div>
+    <div class="pay">
+      <div class="pay-date">SEP 02</div>
+      <div><div class="pay-title">Port adventures settle</div><div class="pay-sub">Charged when booked Aug 1 — estimate, refundable to 3 days out.</div></div>
+      <div class="pay-amt">~$540</div>
+    </div>
+    <div class="pay">
+      <div class="pay-date">OCT 15</div>
+      <div><div class="pay-title">Travel insurance decision</div><div class="pay-sub">Skip if Sapphire coverage is enough — I'll lay out the comparison.</div></div>
+      <div class="pay-amt">$0–280</div>
+    </div>
+  </section>
+
+  <!-- ================= CREW ================= -->
+  <section class="view" id="view-crew">
+    <div class="eyebrow first">The crew</div>
+
+    <div class="person">
+      <div class="p-top"><div class="p-name">Chris</div><div class="p-age">·  passport OK to 2031</div></div>
+      <div class="p-chips"><span class="chip">Castaway Gold</span><span class="chip">Southwest A-List</span><span class="chip">Costco Exec</span></div>
+    </div>
+    <div class="person">
+      <div class="p-top"><div class="p-name">Kat</div><div class="p-age">·  passport OK to 2029</div></div>
+      <div class="p-chips"><span class="chip">Castaway Gold</span><span class="chip">Marriott Gold</span><span class="chip note">Plans the trips — gets the aisle seat</span></div>
+    </div>
+    <div class="person">
+      <div class="p-top"><div class="p-name">Sedona</div><div class="p-age">12 · age auto-updates</div><div class="p-pass">passport 2030</div></div>
+      <div class="p-chips"><span class="chip note">Motion sickness — patches for sea days</span><span class="chip note">Edge / Vibe club age band</span></div>
+    </div>
+    <div class="person">
+      <div class="p-top"><div class="p-name">River</div><div class="p-age">9</div><div class="p-pass warn">passport SEP 2027 ⚠</div></div>
+      <div class="p-chips"><span class="chip note">No seafood</span><span class="chip note">48" — check ride minimums</span></div>
+    </div>
+    <div class="eyebrow">Standing preferences</div>
+    <div class="att advise">
+      <div class="a-ico">📖</div>
+      <div>
+        <div class="a-title">The registry travels with you</div>
+        <div class="a-sub">Ages, passports, loyalty tiers, dietary notes, pace — entered once, applied to every trip. Booking windows shift automatically when a tier changes.</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="footer">
+  <nav class="tabs">
+    <button class="nav-btn active" data-view="desk"><span class="ico">🧭</span>Desk</button>
+    <button class="nav-btn" data-view="trips"><span class="ico">🗺️</span>Trips</button>
+    <button class="nav-btn" data-view="ledger"><span class="ico">🪙</span>Ledger</button>
+    <button class="nav-btn" data-view="crew"><span class="ico">🧳</span>Crew</button>
+  </nav>
+</div>
+
+<script>
+(function () {
+  var btns = document.querySelectorAll('.nav-btn');
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      btns.forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
+      document.getElementById('view-' + b.getAttribute('data-view')).classList.add('active');
+      window.scrollTo(0, 0);
+    });
+  });
+})();
+</script>
+</body>
+</html>
