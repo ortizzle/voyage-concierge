@@ -1,7 +1,7 @@
 /* Voyage Concierge service worker — offline shell.
    Bump VERSION on every deploy so clients pick up the new build. */
-var VERSION = 'voyage-v2';
-var SHELL = ['./index.html', './manifest.webmanifest', './icon.svg', './icon-maskable.svg'];
+var VERSION = 'voyage-v3';
+var SHELL = ['./index.html', './manifest.webmanifest', './icon.svg', './icon-maskable.svg', './ortiz-drive.js'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(

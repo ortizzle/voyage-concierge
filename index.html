@@ -278,6 +278,11 @@
   .btn-sm { min-height: 46px; padding: 0 16px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--text); }
   .btn-sm.primary { background: var(--brass); color: #1a1408; border: none; }
   .btn-sm.danger { color: var(--red); border-color: rgba(224,101,101,.4); }
+  .drive-btn { display: block; width: 100%; min-height: 48px; margin-bottom: 8px; }
+  .drive-hint { font-size: 13px; color: var(--dim); line-height: 1.55; }
+  .ortiz-drive-off { color: var(--dim) !important; }
+  #driveBar:empty { display: none; }
+  #driveBar .drive-btn { margin-bottom: 14px; }
   .status-line { font-size: 12.5px; margin-top: 10px; }
   .status-line.ok { color: var(--green); }
   .status-line.off { color: var(--dim); }
@@ -309,6 +314,7 @@
 <div class="footer" id="appFooter"></div>
 <div id="toastHost"></div>
 
+<script src="ortiz-drive.js"></script>
 <script>
 (function () {
   'use strict';
@@ -369,9 +375,12 @@
   function uid(prefix) {
     return (prefix || 'r') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
   }
+  var driveTimer = null;
   function saveData() {
     purgeTombstones();
     Store.set('data', data);
+    clearTimeout(driveTimer);
+    driveTimer = setTimeout(function () { OrtizDrive.check(); }, 2000);
   }
   function purgeTombstones() {
     var cutoff = Date.now() - 60 * 86400000;
@@ -1475,6 +1484,10 @@
       return;
     }
 
+    var bar = h('div');
+    bar.id = 'driveBar';
+    elMain.appendChild(bar);
+    OrtizDrive.mountBar(bar, { className: 'btn-sm drive-btn' });
     elMain.appendChild(h('div', 'sec-head', trips.length + (trips.length === 1 ? ' voyage' : ' voyages')));
     trips.forEach(function (trip) {
       var a = A(trip);
@@ -1655,7 +1668,7 @@
     var c2 = h('div', 'set-card');
     c2.appendChild(h('h3', 'serif', 'Your data'));
     var trips = liveRecords('trip');
-    c2.appendChild(h('p', null, trips.length + (trips.length === 1 ? ' trip' : ' trips') + ' saved on this device. Nothing is uploaded anywhere. Export gives you a file you can keep or move to another device.'));
+    c2.appendChild(h('p', null, trips.length + (trips.length === 1 ? ' trip' : ' trips') + ' saved on this device. Nothing is uploaded unless you turn on the Google Drive copy below. Export gives you a file you can keep or move to another device.'));
     var row2 = h('div', 'btn-row');
     var exp = h('button', 'btn-sm', 'Export');
     exp.type = 'button';
@@ -1681,6 +1694,10 @@
     row2.appendChild(exp); row2.appendChild(imp); row2.appendChild(wipe);
     c2.appendChild(row2);
     body.appendChild(c2);
+
+    var cd = h('div', 'set-card');
+    cd.appendChild(OrtizDrive.settingsBlock({ labelTag: 'h3', labelClass: 'serif', buttonClass: 'btn-sm primary drive-btn', hintClass: 'drive-hint' }));
+    body.appendChild(cd);
 
     // About
     var c3 = h('div', 'set-card');
@@ -2994,6 +3011,18 @@
       navigator.serviceWorker.register('sw.js').catch(function () { /* offline mode unavailable; app still works */ });
     });
   }
+
+  // The Drive copy is the export file (records only) — the Claude key never goes in it.
+  OrtizDrive.init({
+    app: 'Voyage Concierge',
+    prefix: 'voyage-concierge',
+    getData: function () { return JSON.parse(JSON.stringify(data)); },
+    toast: function (m) { toast(m); },
+    onChange: function () {
+      var bar = document.getElementById('driveBar');
+      if (bar) OrtizDrive.mountBar(bar, { className: 'btn-sm drive-btn' });
+    }
+  });
 
   render();
 })();
